@@ -225,7 +225,7 @@ let constrInArg x = valueIn (VConstr x)
 let metaification ist gl th csr =
   let ca = constrInArg csr in
   let lvar = constr_of_VConstr (pf_env gl) (val_interp ist gl
-     (glob_tactic <:tactic<(build_var_list $th $ca)>>)) in
+     (glob_tactic <:tactic<(build_varlist $th $ca)>>)) in
   let meta = constr_or_id (pf_env gl) (val_interp ist gl 
     (let lvar = constrInArg lvar in
      glob_tactic <:tactic<(interp_A $th $lvar $ca)>>)) in
