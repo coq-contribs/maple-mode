@@ -278,7 +278,7 @@ let apply_ope ope env sigma c =
   let g =
     Proof_trees.mk_goal (Environ.named_context env) (*Dummy goal*) mkProp
   in
-  let g = { it=g; sigma=sigma } in
+  let g = { Evd.it=g; Evd.sigma=sigma } in
   put_lambdas c (operation ope bod ist g)
 
 (* Declare the new reductions (used by "Eval" commands and "Eval" constr) *)
