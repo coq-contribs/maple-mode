@@ -1,3 +1,6 @@
+fake_maple
+MAPLE = "./fake_maple/fake_maple"
+Examples.v
 Maple.v
 maple.ml
 -byte
