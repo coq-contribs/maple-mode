@@ -193,12 +193,9 @@ Proof.
   intros.
   let t := eval expand 0 in ((3*x+3)*(y-5/3))%R in
   replace ((3*x+3)*(y-5/3))%R with t.
-(* Here there is a bug possibly due to parsing/pretty printing rules change
-   for 5 between V7 and V8
   reflexivity.
   field;discrR.
 Save.
-*) Admitted.
 
 Lemma eval_norm0 :
  forall x y : R,
