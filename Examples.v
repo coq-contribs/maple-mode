@@ -2,6 +2,7 @@
 
 Require Export Maple.
 Require Export Reals.
+Open Scope R_scope.
 
 (**** Tactic Simplify ****)
 
@@ -170,7 +171,7 @@ Lemma eval_simp0 :
  forall x y : R, (x * y)%R <> 0%R -> (x / x + y / y)%R = 2%R.
 Proof.
   intros.
-  let t := eval simplify 0 in (x / x + y / y)%R in
+  let t := eval simplify in (x / x + y / y)%R in
   replace (x / x + y / y)%R with t.
   reflexivity.
   field; assumption.
@@ -180,7 +181,7 @@ Lemma eval_fact0 :
  forall x y : R, x <> 0%R -> y <> 0%R -> (x / x + x / y)%R = ((x + y) / y)%R.
 Proof.
   intros.
-  let t := eval factor 0 in (x / x + x / y)%R in
+  let t := eval factor in (x / x + x / y)%R in
   replace (x / x + x / y)%R with t.
   rewrite Rplus_comm; reflexivity.
   field; split_Rmult; assumption.
@@ -191,7 +192,7 @@ Lemma eval_expd0 :
  ((3 * x + 3) * (y - 5 / 3))%R = (3 * x * y + - (5 * x) + 3 * y + -5)%R.
 Proof.
   intros.
-  let t := eval expand 0 in ((3*x+3)*(y-5/3))%R in
+  let t := eval expand in ((3*x+3)*(y-5/3))%R in
   replace ((3*x+3)*(y-5/3))%R with t.
   reflexivity.
   field;discrR.
@@ -202,7 +203,7 @@ Lemma eval_norm0 :
  x <> 0%R -> y <> 0%R -> (y / (x * y) + y / x)%R = ((1 + y) / x)%R.
 Proof.
   intros.
-  let t := eval normal 0 in (y / (x * y) + y / x)%R in
+  let t := eval normal in (y / (x * y) + y / x)%R in
   replace (y / (x * y) + y / x)%R with t.
   unfold Rdiv in |- *; reflexivity.
   field; split_Rmult; assumption.
