@@ -1,5 +1,5 @@
 fake_maple
-MAPLE = "./fake_maple/fake_maple"
+COQC = "export MAPLE=./fake_maple/fake_maple ; $(COQBIN)coqc"
 Examples.v
 Maple.v
 maple.ml

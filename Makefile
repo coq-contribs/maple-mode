@@ -55,7 +55,7 @@ COQDEP=$(COQBIN)coqdep -c
 GRAMMARS=grammar.cma
 CAMLP4EXTEND=pa_extend.cmo pa_ifdef.cmo q_MLast.cmo
 PP=-pp "camlp4o -I . -I $(COQTOP)/parsing $(CAMLP4EXTEND) $(GRAMMARS) -impl"
-MAPLE=./fake_maple/fake_maple
+COQC=export MAPLE=./fake_maple/fake_maple ; $(COQBIN)coqc
 
 #########################
 #                       #
