@@ -216,7 +216,9 @@ let maple_call exe =
     let maple = is_maple false in
     let _ = Sys.command ("echo \""^ins^"\" | "^maple^" -q") in ();
     let inc = open_in tmp in
-    let exp = Grammar.Entry.parse mexpr_s (Stream.of_channel inc) in
+    let exp =
+      try Grammar.Entry.parse mexpr_s (Stream.of_channel inc)
+      with Stdpp.Exc_located (_,e) -> raise e in
     begin
       close_in inc;
       Sys.remove tmp;
@@ -287,15 +289,15 @@ let apply_ope ope env sigma c =
 
 (* Declare the new reductions (used by "Eval" commands and "Eval" constr) *)
 if !Options.v7 then
- let _ = Tacred.declare_red_expr "Simplify" (apply_ope "simplify") in
- let _ = Tacred.declare_red_expr "Factor" (apply_ope "factor") in
- let _ = Tacred.declare_red_expr "Expand" (apply_ope "expand") in
- let _ = Tacred.declare_red_expr "Normal" (apply_ope "normal") in ()
+ let _ = Redexpr.declare_red_expr "Simplify" (apply_ope "simplify") in
+ let _ = Redexpr.declare_red_expr "Factor" (apply_ope "factor") in
+ let _ = Redexpr.declare_red_expr "Expand" (apply_ope "expand") in
+ let _ = Redexpr.declare_red_expr "Normal" (apply_ope "normal") in ()
 else
- let _ = Tacred.declare_red_expr "simplify" (apply_ope "simplify") in
- let _ = Tacred.declare_red_expr "factor" (apply_ope "factor") in
- let _ = Tacred.declare_red_expr "expand" (apply_ope "expand") in
- let _ = Tacred.declare_red_expr "normal" (apply_ope "normal") in ()
+ let _ = Redexpr.declare_red_expr "simplify" (apply_ope "simplify") in
+ let _ = Redexpr.declare_red_expr "factor" (apply_ope "factor") in
+ let _ = Redexpr.declare_red_expr "expand" (apply_ope "expand") in
+ let _ = Redexpr.declare_red_expr "normal" (apply_ope "normal") in ()
 
 (* Generic tactic operation *)
 let tactic_operation ope csr g =
