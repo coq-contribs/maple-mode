@@ -168,7 +168,9 @@ let rec mexpr_of_int n =
  in mk_r list_ch
 
 (* Gives the index of xi *)
-let var_of_string x = int_of_string (String.sub x 1 ((String.length x)-1))
+let var_of_string x =
+  try int_of_string (String.sub x 1 ((String.length x)-1))
+  with _ -> error "Unable to parse Maple answer"
 
 (* Expands the power operation *)
 let rec expand_power x n =
@@ -258,41 +260,30 @@ let operation ope csr ist g =
     (let th = constrIn th in
     glob_tactic <:tactic<eval compute in (interp_ExprA $th $lvar $exs)>>))
 
-(* Pushes the lambdas of a constr in the environment *)
-let rec push_lambdas env csr =
-  match kind_of_term csr with
-  | Lambda (nme,typ,bod) ->
-    (match nme with
-     | Name id ->
-       push_lambdas (Environ.push_named (id,None,typ) env)
-       (subst1 (mkVar id) bod)
-     | _ ->
-       anomalylabstrm "Maple.push_lambdas" (str "No Anonymous in Definition"))
-  | bod -> (env,csr)
-
-(* Builds the binder list of an abstraction *)
-let rec lambda_list csr =
-  match kind_of_term csr with
-  | Lambda (nme,typ,bod) -> (nme,typ)::(lambda_list bod)
-  | _ -> []
-
-(* Puts the initial binders over the simplified body *)
-let put_lambdas csr bod =
-  List.fold_right
-    (fun (nme,typ) a -> 
-     match nme with
-     | Name id -> mkLambda (nme,typ,subst_var id a)
-     | _ -> mkLambda (nme,typ,a)) (lambda_list csr) bod
+(* Replace rels by names *)
+open Environ
+open Nameops
+open Termops
+let name_rels env c =
+  let (env,subst) =
+    fold_rel_context (fun _ (na,b,t) (env,subst) ->
+      let id = match na with
+	| Name id -> id
+	| _ -> next_ident_away (id_of_string "x") (ids_of_context env) in
+      (push_named (substl_decl subst (id,b,t)) env, mkVar id :: subst))
+      env
+      ~init:(reset_with_named_context (named_context env) env, []) in
+  (env, List.map destVar subst, substl subst c)
 
 (* Applies the operation on the constant body *)
 let apply_ope ope env sigma c =
-  let (env,bod) = push_lambdas env c in
+  let (env,vars,c) = name_rels env c in
   let ist = {lfun=[];debug=get_debug ()} in
   let g =
     Proof_trees.mk_goal (Environ.named_context env) (*Dummy goal*) mkProp
   in
   let g = { it=g; sigma=sigma } in
-  put_lambdas c (operation ope bod ist g)
+  subst_vars vars (operation ope c ist g)
 
 (* Declare the new reductions (used by "Eval" commands and "Eval" constr) *)
 if !Options.v7 then
