@@ -211,18 +211,16 @@ Qed.
 
 Definition def0 := Eval simplify in (1 / 1)%R.
 
-(* no longer supported
-Definition def1 (x,y:R) := Eval simplify in (x/y+y)*y)%R.
+Definition def1 (x y:R) := Eval simplify in ((x/y+y)*y)%R.
 
-Definition def2 (x,y:R) := Eval factor in (x*y+x)%R .
+Definition def2 (x y:R) := Eval factor in (x*y+x)%R .
 
-Definition def3 (x,y:R) := Eval factor in (x*y-3*x+7*y-21)%R.
+Definition def3 (x y:R) := Eval factor in (x*y-3*x+7*y-21)%R.
 
-Definition def4 (x,y:R) := Eval expand in ((x+y)*x)%R.
+Definition def4 (x y:R) := Eval expand in ((x+y)*x)%R.
 
-Definition def5 (x,y:R) := Eval expand in ((x-7)*(y+4))%R.
+Definition def5 (x y:R) := Eval expand in ((x-7)*(y+4))%R.
 
-Definition def6 (x,y:R) := Eval normal in (/x+/y)%R.
+Definition def6 (x y:R) := Eval normal in (/x+/y)%R.
 
-Definition def7 (x,y:R) := Eval normal in (x*x*y/(x+y)+y*x*y/(x+y))%R.
-*)
+Definition def7 (x y:R) := Eval normal in (x*x*y/(x+y)+y*x*y/(x+y))%R.
