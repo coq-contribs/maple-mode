@@ -224,8 +224,12 @@ let constrInArg x = valueIn (VConstr x)
 (* Applies the metaification *)
 let metaification ist gl th csr =
   let ca = constrInArg csr in
-  let lvar = constr_of_VConstr (pf_env gl) (val_interp ist gl
-     (glob_tactic <:tactic<(build_varlist $th $ca)>>)) in
+  let tac =
+   if !Options.v7 then
+    glob_tactic <:tactic<(build_var_list $th $ca)>>
+   else
+    glob_tactic <:tactic<(build_varlist $th $ca)>> in
+  let lvar = constr_of_VConstr (pf_env gl) (val_interp ist gl tac) in
   let meta = constr_or_id (pf_env gl) (val_interp ist gl 
     (let lvar = constrInArg lvar in
      glob_tactic <:tactic<(interp_A $th $lvar $ca)>>)) in
@@ -282,10 +286,16 @@ let apply_ope ope env sigma c =
   put_lambdas c (operation ope bod ist g)
 
 (* Declare the new reductions (used by "Eval" commands and "Eval" constr) *)
-let _ = Tacred.declare_red_expr "Simplify" (apply_ope "simplify")
-let _ = Tacred.declare_red_expr "Factor" (apply_ope "factor")
-let _ = Tacred.declare_red_expr "Expand" (apply_ope "expand")
-let _ = Tacred.declare_red_expr "Normal" (apply_ope "normal")
+if !Options.v7 then
+ let _ = Tacred.declare_red_expr "Simplify" (apply_ope "simplify") in
+ let _ = Tacred.declare_red_expr "Factor" (apply_ope "factor") in
+ let _ = Tacred.declare_red_expr "Expand" (apply_ope "expand") in
+ let _ = Tacred.declare_red_expr "Normal" (apply_ope "normal") in ()
+else
+ let _ = Tacred.declare_red_expr "simplify" (apply_ope "simplify") in
+ let _ = Tacred.declare_red_expr "factor" (apply_ope "factor") in
+ let _ = Tacred.declare_red_expr "expand" (apply_ope "expand") in
+ let _ = Tacred.declare_red_expr "normal" (apply_ope "normal") in ()
 
 (* Generic tactic operation *)
 let tactic_operation ope csr g =

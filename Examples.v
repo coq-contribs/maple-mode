@@ -170,7 +170,7 @@ Lemma eval_simp0 :
  forall x y : R, (x * y)%R <> 0%R -> (x / x + y / y)%R = 2%R.
 Proof.
   intros.
-  let t := eval Simplify 0 in (x / x + y / y)%R in
+  let t := eval simplify 0 in (x / x + y / y)%R in
   replace (x / x + y / y)%R with t.
   reflexivity.
   field; assumption.
@@ -180,7 +180,7 @@ Lemma eval_fact0 :
  forall x y : R, x <> 0%R -> y <> 0%R -> (x / x + x / y)%R = ((x + y) / y)%R.
 Proof.
   intros.
-  let t := eval Factor 0 in (x / x + x / y)%R in
+  let t := eval factor 0 in (x / x + x / y)%R in
   replace (x / x + x / y)%R with t.
   rewrite Rplus_comm; reflexivity.
   field; split_Rmult; assumption.
@@ -192,7 +192,7 @@ Lemma eval_expd0 :
 Proof.
   intros.
 (*
-  Let t = Eval Expand 0 in ``(3*x+3)*(y-5/3)`` In
+  Let t = eval expand 0 in ``(3*x+3)*(y-5/3)`` In
   Replace ``(3*x+3)*(y-5/3)`` with t.
   Reflexivity.
   Field;DiscrR.
@@ -204,26 +204,26 @@ Lemma eval_norm0 :
  x <> 0%R -> y <> 0%R -> (y / (x * y) + y / x)%R = ((1 + y) / x)%R.
 Proof.
   intros.
-  let t := eval Normal 0 in (y / (x * y) + y / x)%R in
+  let t := eval normal 0 in (y / (x * y) + y / x)%R in
   replace (y / (x * y) + y / x)%R with t.
   unfold Rdiv in |- *; reflexivity.
   field; split_Rmult; assumption.
 Qed.
 
-Definition def0 := Eval Simplify 0 in (1 / 1)%R.
+Definition def0 := Eval simplify 0 in (1 / 1)%R.
 
 (* no longer supported
-Definition def1 [x,y:R] := Eval Simplify 0 in ``(x/y+y)*y``.
+Definition def1 [x,y:R] := Eval simplify 0 in ``(x/y+y)*y``.
 
-Definition def2 [x,y:R] := Eval Factor 0 in ``x*y+x`` .
+Definition def2 [x,y:R] := Eval factor 0 in ``x*y+x`` .
 
-Definition def3 [x,y:R] := Eval Factor 0 in ``x*y-3*x+7*y-21``.
+Definition def3 [x,y:R] := Eval factor 0 in ``x*y-3*x+7*y-21``.
 
-Definition def4 [x,y:R] := Eval Expand 0 in ``(x+y)*x``.
+Definition def4 [x,y:R] := Eval expand 0 in ``(x+y)*x``.
 
-Definition def5 [x,y:R] := Eval Expand 0 in ``(x-7)*(y+4)``.
+Definition def5 [x,y:R] := Eval expand 0 in ``(x-7)*(y+4)``.
 
-Definition def6 [x,y:R] := Eval Normal 0 in ``/x+/y``.
+Definition def6 [x,y:R] := Eval normal 0 in ``/x+/y``.
 
-Definition def7 [x,y:R] := Eval Normal 0 in ``x*x*y/(x+y)+y*x*y/(x+y)``.
+Definition def7 [x,y:R] := Eval normal 0 in ``x*x*y/(x+y)+y*x*y/(x+y)``.
 *)
