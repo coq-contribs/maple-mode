@@ -154,22 +154,17 @@ let rec string_of_expr = function
 
 (* Gives the expr expression corresponding to an int *)
 let rec mexpr_of_int n =
- if !Options.v7 then
-  (if n = 0 then Zero
-   else if n = 1 then One
-   else Plus (One,(mexpr_of_int (n-1))))
- else
-  let list_ch = G_rsyntax.int_decomp n in
-  let two = Plus (One,One) in
-  let rec mk_r l =
-    match l with
-    | [] -> failwith "Error r_of_posint"
-    | [a] -> if a=1 then One else Zero
-    | a::[b] -> if a==1 then Plus (One,two) else two
-    | a::l' ->
-       if a=1 then Plus (One, Mult (two, mk_r l'))
-       else Mult (two, mk_r l')
-  in mk_r list_ch
+ let list_ch = G_rsyntax.int_decomp n in
+ let two = Plus (One,One) in
+ let rec mk_r l =
+   match l with
+   | [] -> failwith "Error r_of_posint"
+   | [a] -> if a=1 then One else Zero
+   | a::[b] -> if a==1 then Plus (One,two) else two
+   | a::l' ->
+      if a=1 then Plus (One, Mult (two, mk_r l'))
+      else Mult (two, mk_r l')
+ in mk_r list_ch
 
 (* Gives the index of xi *)
 let var_of_string x = int_of_string (String.sub x 1 ((String.length x)-1))
