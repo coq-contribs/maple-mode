@@ -16,6 +16,7 @@ open Tacmach
 open Term
 open Util
 open Vernacinterp
+open Evd
 
 (* Returns the version of Maple *)
 let version maple =
@@ -290,7 +291,7 @@ let apply_ope ope env sigma c =
   let g =
     Proof_trees.mk_goal (Environ.named_context env) (*Dummy goal*) mkProp
   in
-  let g = { Evd.it=g; Evd.sigma=sigma } in
+  let g = { it=g; sigma=sigma } in
   put_lambdas c (operation ope bod ist g)
 
 (* Declare the new reductions (used by "Eval" commands and "Eval" constr) *)
