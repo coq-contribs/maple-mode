@@ -191,11 +191,12 @@ Lemma eval_expd0 :
  ((3 * x + 3) * (y - 5 / 3))%R = (3 * x * y + - (5 * x) + 3 * y + -5)%R.
 Proof.
   intros.
-(*
-  Let t = eval expand 0 in ``(3*x+3)*(y-5/3)`` In
-  Replace ``(3*x+3)*(y-5/3)`` with t.
-  Reflexivity.
-  Field;DiscrR.
+  let t := eval expand 0 in ((3*x+3)*(y-5/3))%R in
+  replace ((3*x+3)*(y-5/3))%R with t.
+(* Here there is a bug possibly due to parsing/pretty printing rules change
+   for 5 between V7 and V8
+  reflexivity.
+  field;discrR.
 Save.
 *) Admitted.
 
@@ -213,17 +214,17 @@ Qed.
 Definition def0 := Eval simplify 0 in (1 / 1)%R.
 
 (* no longer supported
-Definition def1 [x,y:R] := Eval simplify 0 in ``(x/y+y)*y``.
+Definition def1 (x,y:R) := Eval simplify 0 in (x/y+y)*y)%R.
 
-Definition def2 [x,y:R] := Eval factor 0 in ``x*y+x`` .
+Definition def2 (x,y:R) := Eval factor 0 in (x*y+x)%R .
 
-Definition def3 [x,y:R] := Eval factor 0 in ``x*y-3*x+7*y-21``.
+Definition def3 (x,y:R) := Eval factor 0 in (x*y-3*x+7*y-21)%R.
 
-Definition def4 [x,y:R] := Eval expand 0 in ``(x+y)*x``.
+Definition def4 (x,y:R) := Eval expand 0 in ((x+y)*x)%R.
 
-Definition def5 [x,y:R] := Eval expand 0 in ``(x-7)*(y+4)``.
+Definition def5 (x,y:R) := Eval expand 0 in ((x-7)*(y+4))%R.
 
-Definition def6 [x,y:R] := Eval normal 0 in ``/x+/y``.
+Definition def6 (x,y:R) := Eval normal 0 in (/x+/y)%R.
 
-Definition def7 [x,y:R] := Eval normal 0 in ``x*x*y/(x+y)+y*x*y/(x+y)``.
+Definition def7 (x,y:R) := Eval normal 0 in (x*x*y/(x+y)+y*x*y/(x+y))%R.
 *)
