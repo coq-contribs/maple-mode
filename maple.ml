@@ -203,7 +203,7 @@ EXTEND
     | "simple" NONA
       [ "-"; x = mexpr -> Opp x
       | x = mexpr; "^"; n = INT -> expand_power x (int_of_string n)
-      | n = INT -> mexpr_of_int (int_of_string n)
+      | n = INT -> mexpr_of_int (Bigint.of_string n)
       | x = LIDENT -> Var (var_of_string x)
       | "("; e = mexpr; ")" -> e ] ];
 END;;
