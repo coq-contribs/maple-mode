@@ -274,7 +274,7 @@ let name_rels env c =
 	| _ -> next_ident_away (id_of_string "x") (ids_of_context env) in
       (push_named (substl_decl subst (id,b,t)) env, mkVar id :: subst))
       env
-      ~init:(reset_with_named_context (named_context env) env, []) in
+      ~init:(reset_with_named_context (named_context_val env) env, []) in
   (env, List.map destVar subst, substl subst c)
 
 (* Applies the operation on the constant body *)
@@ -282,7 +282,7 @@ let apply_ope ope env sigma c =
   let (env,vars,c) = name_rels env c in
   let ist = {lfun=[];debug=get_debug ()} in
   let g =
-    Proof_trees.mk_goal (Environ.named_context env) (*Dummy goal*) mkProp
+    Proof_trees.mk_goal (named_context_val env) (*Dummy goal*) mkProp
   in
   let g = { it=g; sigma=sigma } in
   subst_vars vars (operation ope c ist g)
