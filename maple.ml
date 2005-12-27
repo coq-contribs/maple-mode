@@ -312,20 +312,20 @@ let tac_iter tac lcr =
 let build_tactic nme = tac_iter (tactic_operation nme)
 
 (* Declaration of the generic tactic *)
-TACTIC EXTEND MapleFunSimplify
-| [ "Simplify" ne_constr_list(cl) ] -> [ build_tactic "simplify" cl ]
+TACTIC EXTEND maple_fun_simplify
+| [ "simplify" ne_constr_list(cl) ] -> [ build_tactic "simplify" cl ]
 END
 
-TACTIC EXTEND MapleFunFactor
-| [ "Factor" ne_constr_list(cl) ] -> [ build_tactic "factor" cl ]
+TACTIC EXTEND maple_fun_factor
+| [ "factor" ne_constr_list(cl) ] -> [ build_tactic "factor" cl ]
 END
 
-TACTIC EXTEND MapleFunExpand
-| [ "Expand" ne_constr_list(cl) ] -> [ build_tactic "expand" cl ]
+TACTIC EXTEND maple_fun_expand
+| [ "expand" ne_constr_list(cl) ] -> [ build_tactic "expand" cl ]
 END
 
-TACTIC EXTEND MapleFunNormal
-| [ "Normal" ne_constr_list(cl) ] -> [ build_tactic "normal" cl ]
+TACTIC EXTEND maple_fun_normal
+| [ "normal" ne_constr_list(cl) ] -> [ build_tactic "normal" cl ]
 END
 
 (* Verifies if Maple is available during the ML loading *)
