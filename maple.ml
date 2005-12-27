@@ -1,7 +1,6 @@
 (* maple.ml4 *)
 
 open Command
-open Coqast
 open Declare
 open Field
 open Names
@@ -154,8 +153,14 @@ let rec string_of_expr = function
   | Mult (e1,e2) -> "("^(string_of_expr e1)^"*"^(string_of_expr e2)^")"
 
 (* Gives the expr expression corresponding to an int *)
+let rec int_decomp m =
+  if Bigint.equal m Bigint.zero then [0] else
+  if Bigint.equal m Bigint.one then [1] else
+  let (m',b) = Bigint.euclid m Bigint.two in
+  (if Bigint.equal b Bigint.zero then 0 else 1) :: int_decomp m'
+
 let rec mexpr_of_int n =
- let list_ch = G_rsyntax.int_decomp n in
+ let list_ch = int_decomp n in
  let two = Plus (One,One) in
  let rec mk_r l =
    match l with
@@ -237,11 +242,7 @@ let constrInArg x = valueIn (VConstr x)
 (* Applies the metaification *)
 let metaification ist gl th csr =
   let ca = constrInArg csr in
-  let tac =
-   if !Options.v7 then
-    glob_tactic <:tactic<(build_var_list $th $ca)>>
-   else
-    glob_tactic <:tactic<(build_varlist $th $ca)>> in
+  let tac = glob_tactic <:tactic<(build_varlist $th $ca)>> in
   let lvar = constr_of_VConstr (pf_env gl) (val_interp ist gl tac) in
   let meta = constr_or_id (pf_env gl) (val_interp ist gl 
     (let lvar = constrInArg lvar in
@@ -287,13 +288,7 @@ let apply_ope ope env sigma c =
   let g = { it=g; sigma=sigma } in
   subst_vars vars (operation ope c ist g)
 
-(* Declare the new reductions (used by "Eval" commands and "Eval" constr) *)
-if !Options.v7 then
- let _ = Redexpr.declare_red_expr "Simplify" (apply_ope "simplify") in
- let _ = Redexpr.declare_red_expr "Factor" (apply_ope "factor") in
- let _ = Redexpr.declare_red_expr "Expand" (apply_ope "expand") in
- let _ = Redexpr.declare_red_expr "Normal" (apply_ope "normal") in ()
-else
+(* Declare the new reductions (used by "eval" commands and "Eval" constr) *)
  let _ = Redexpr.declare_red_expr "simplify" (apply_ope "simplify") in
  let _ = Redexpr.declare_red_expr "factor" (apply_ope "factor") in
  let _ = Redexpr.declare_red_expr "expand" (apply_ope "expand") in
