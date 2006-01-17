@@ -43,7 +43,7 @@ COQSRC=-I $(COQTOP)/kernel -I $(COQTOP)/lib \
   -I $(CAMLP4LIB)
 ZFLAGS=$(OCAMLLIBS) $(COQSRC)
 override OPT=-byte
-COQFLAGS=-q $(OPT) $(COQLIBS) $(COQ_XML)
+COQFLAGS=-q $(OPT) $(COQLIBS) $(OTHERFLAGS) $(COQ_XML)
 COQC=$(COQBIN)coqc
 GALLINA=gallina
 COQDOC=coqdoc
@@ -52,10 +52,10 @@ CAMLOPTC=ocamlopt -c
 CAMLLINK=ocamlc
 CAMLOPTLINK=ocamlopt
 COQDEP=$(COQBIN)coqdep -c
-COQVO2XML=coq_vo2xml
 GRAMMARS=grammar.cma
 CAMLP4EXTEND=pa_extend.cmo pa_ifdef.cmo q_MLast.cmo
 PP=-pp "camlp4o -I . -I $(COQTOP)/parsing $(CAMLP4EXTEND) $(GRAMMARS) -impl"
+COQC=export MAPLE=./fake_maple/fake_maple ; $(COQBIN)coqc
 
 #########################
 #                       #
@@ -72,14 +72,17 @@ COQLIBS=-I .
 #                                 #
 ###################################
 
-VFILES=Maple.v
+VFILES=Examples.v\
+  Maple.v
 VOFILES=$(VFILES:.v=.vo)
 VIFILES=$(VFILES:.v=.vi)
 GFILES=$(VFILES:.v=.g)
 HTMLFILES=$(VFILES:.v=.html)
 GHTMLFILES=$(VFILES:.v=.g.html)
 
-all: Maple.vo\
+all: fake_maple\
+  Examples.vo\
+  Maple.vo\
   maple.cmo
 
 spec: $(VIFILES)
@@ -96,10 +99,16 @@ all.ps: $(VFILES)
 all-gal.ps: $(VFILES)
 	$(COQDOC) -ps -g -o $@ `$(COQDEP) -sort -suffix .v $(VFILES)`
 
-xml:: .xml_time_stamp
-.xml_time_stamp: Maple.vo
-	$(COQVO2XML) $(COQFLAGS) $(?:%.o=%)
-	touch .xml_time_stamp
+
+
+###################
+#                 #
+# Subdirectories. #
+#                 #
+###################
+
+fake_maple:
+	cd fake_maple ; $(MAKE) all
 
 ####################
 #                  #
@@ -107,7 +116,7 @@ xml:: .xml_time_stamp
 #                  #
 ####################
 
-.PHONY: all opt byte archclean clean install depend xml
+.PHONY: all opt byte archclean clean install depend html fake_maple
 
 .SUFFIXES: .mli .ml .cmo .cmi .cmx .v .vo .vi .g .html .tex .g.tex .g.html
 
@@ -149,28 +158,35 @@ opt:
 
 include .depend
 
-depend:
-	rm .depend
+.depend depend:
+	rm -f .depend
 	$(COQDEP) -i $(COQLIBS) *.v *.ml *.mli >.depend
 	$(COQDEP) $(COQLIBS) -suffix .html *.v >>.depend
-
-xml::
+	(cd fake_maple ; $(MAKE) depend)
 
 install:
 	mkdir -p `$(COQC) -where`/user-contrib
-	cp -f *.vo `$(COQC) -where`/user-contrib
+	cp -f $(VOFILES) `$(COQC) -where`/user-contrib
 	cp -f *.cmo `$(COQC) -where`/user-contrib
+	(cd fake_maple ; $(MAKE) install)
 
 Makefile: Make
 	mv -f Makefile Makefile.bak
 	$(COQBIN)coq_makefile -f Make -o Makefile
 
+	(cd fake_maple ; $(MAKE) Makefile)
+
 clean:
-	rm -f *.cmo *.cmi *.cmx *.o *.vo *.vi *.g *~
+	rm -f *.cmo *.cmi *.cmx *.o $(VOFILES) $(VIFILES) $(GFILES) *~
 	rm -f all.ps all-gal.ps $(HTMLFILES) $(GHTMLFILES)
+	(cd fake_maple ; $(MAKE) clean)
 
 archclean:
 	rm -f *.cmx *.o
+	(cd fake_maple ; $(MAKE) archclean)
+
+html:
+	(cd fake_maple ; $(MAKE) html)
 
 # WARNING
 #
