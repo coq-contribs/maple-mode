@@ -1,189 +1,226 @@
 (* Examples.v *)
 
-Require Maple.
-Require Reals.
+Require Export Maple.
+Require Export Reals.
+Open Scope R_scope.
 
 (**** Tactic Simplify ****)
 
-Lemma simp0:(x:R)``x<>0``->``x/x==1``.
+Lemma simp0 : forall x : R, x <> 0%R -> (x / x)%R = 1%R.
 Proof.
-  Intros.
-  Simplify ``x/x``.
-  Reflexivity.
-  Assumption.
-Save.
+  intros.
+  simplify (x / x)%R.
+  reflexivity.
+  assumption.
+Qed.
 
-Lemma simp1:(x,y:R)``(1+x)<>0``->``((1+x)/(1+x))*(1+y)-(1+y)>=0``.
+Lemma simp1 :
+ forall x y : R,
+ (1 + x)%R <> 0%R -> ((1 + x) / (1 + x) * (1 + y) - (1 + y) >= 0)%R.
 Proof.
-  Intros.
-  Simplify ``(1+x)/(1+x)``.
-  Ring ``1*(1+y)-(1+y)``.
-  Unfold Rge;Right;Reflexivity.
-  Assumption.
-Save.
+  intros.
+  simplify ((1 + x) / (1 + x))%R.
+  ring (1 * (1 + y) - (1 + y))%R.
+  unfold Rge in |- *; right; reflexivity.
+  assumption.
+Qed.
 
-Lemma simp2:(x,y:R)``x<>0``->``y<>0``->``(x/y+y/x)*x*y-(x*x+y*y)+1>0``.
+Lemma simp2 :
+ forall x y : R,
+ x <> 0%R ->
+ y <> 0%R -> ((x / y + y / x) * x * y - (x * x + y * y) + 1 > 0)%R.
 Proof.
-  Intros.
-  Simplify ``(x/y+y/x)*x*y-(x*x+y*y)+1``.
-  Sup0.
-  SplitRmult;Assumption.
-Save.
+  intros.
+  simplify ((x / y + y / x) * x * y - (x * x + y * y) + 1)%R.
+  prove_sup0.
+  split_Rmult; assumption.
+Qed.
 
-Lemma simp3:(x,y:R)``(x+y)<>0``->``x/(x+y)+y/(x+y)==1``.
+Lemma simp3 :
+ forall x y : R, (x + y)%R <> 0%R -> (x / (x + y) + y / (x + y))%R = 1%R.
 Proof.
-  Intros.
-  Simplify ``x/(x+y)+y/(x+y)``.
-  Reflexivity.
-  Assumption.
-Save.
+  intros.
+  simplify (x / (x + y) + y / (x + y))%R.
+  reflexivity.
+  assumption.
+Qed.
 
 (**** Tactic Factor ****)
 
-Lemma fact0:(a,b:R)``a*a+2*a*b+b*b==(a+b)*(a+b)``.
+Lemma fact0 :
+ forall a b : R, (a * a + 2 * a * b + b * b)%R = ((a + b) * (a + b))%R.
 Proof.
-  Intros.
-  Factor ``a*a+2*a*b+b*b``.
-  Reflexivity.
-Save.
+  intros.
+  factor (a * a + 2 * a * b + b * b)%R.
+  reflexivity.
+Qed.
 
-Lemma fact1:(a,b:R)``a*a-2*a*b+b*b==(a-b)*(a-b)``.
+Lemma fact1 :
+ forall a b : R, (a * a - 2 * a * b + b * b)%R = ((a - b) * (a - b))%R.
 Proof.
-  Intros.
-  Factor ``a*a-2*a*b+b*b``.
-  Reflexivity.
-Save.
+  intros.
+  factor (a * a - 2 * a * b + b * b)%R.
+  reflexivity.
+Qed.
 
-Lemma fact2:(a,b:R)``a*a-b*b==(a-b)*(a+b)``.
+Lemma fact2 : forall a b : R, (a * a - b * b)%R = ((a - b) * (a + b))%R.
 Proof.
-  Intros.
-  Factor ``a*a-b*b``.
-  Reflexivity.
-Save.
+  intros.
+  factor (a * a - b * b)%R.
+  reflexivity.
+Qed.
 
-Lemma fact3:(a,b:R)``a*a*a+3*a*a*b+3*a*b*b+b*b*b==(a+b)*(a+b)*(a+b)``.
+Lemma fact3 :
+ forall a b : R,
+ (a * a * a + 3 * a * a * b + 3 * a * b * b + b * b * b)%R =
+ ((a + b) * (a + b) * (a + b))%R.
 Proof.
-  Intros.
-  Factor ``a*a*a+3*a*a*b+3*a*b*b+b*b*b``.
-  Reflexivity.
-Save.
+  intros.
+  factor (a * a * a + 3 * a * a * b + 3 * a * b * b + b * b * b)%R.
+  reflexivity.
+Qed.
 
 (**** Tactic Expand ****)
 
-Lemma expd0:(a,b:R)``(a+b)*(a+b)==a*a+2*a*b+b*b``.
+Lemma expd0 :
+ forall a b : R, ((a + b) * (a + b))%R = (a * a + 2 * a * b + b * b)%R.
 Proof.
-  Intros.
-  Expand ``(a+b)*(a+b)``.
-  Reflexivity.
-Save.
+  intros.
+  expand ((a + b) * (a + b))%R.
+  reflexivity.
+Qed.
 
-Lemma expd1:(a,b:R)``(a-b)*(a-b)==a*a-2*a*b+b*b``.
+Lemma expd1 :
+ forall a b : R, ((a - b) * (a - b))%R = (a * a - 2 * a * b + b * b)%R.
 Proof.
-  Intros.
-  Expand ``(a-b)*(a-b)``.
-  Reflexivity.
-Save.
+  intros.
+  expand ((a - b) * (a - b))%R.
+  reflexivity.
+Qed.
 
-Lemma expd2:(a,b:R)``(a-b)*(a+b)==a*a-b*b``.
+Lemma expd2 : forall a b : R, ((a - b) * (a + b))%R = (a * a - b * b)%R.
 Proof.
-  Intros.
-  Expand ``(a-b)*(a+b)``.
-  Reflexivity.
-Save.
+  intros.
+  expand ((a - b) * (a + b))%R.
+  reflexivity.
+Qed.
 
-Lemma expd3:(a,b:R)``(a+b)*(a+b)*(a+b)==a*a*a+3*a*a*b+3*a*b*b+b*b*b``.
+Lemma expd3 :
+ forall a b : R,
+ ((a + b) * (a + b) * (a + b))%R =
+ (a * a * a + 3 * a * a * b + 3 * a * b * b + b * b * b)%R.
 Proof.
-  Intros.
-  Expand ``(a+b)*(a+b)*(a+b)``.
-  Reflexivity.
-Save.
+  intros.
+  expand ((a + b) * (a + b) * (a + b))%R.
+  reflexivity.
+Qed.
 
 (**** Tactic Normal ****)
 
-Lemma norm0:(x,y:R)``x<>0``->``y<>0``->``x/y+y/x==(x*x+y*y)*/y*/x``.
+Lemma norm0 :
+ forall x y : R,
+ x <> 0%R -> y <> 0%R -> (x / y + y / x)%R = ((x * x + y * y) * / y * / x)%R.
 Proof.
-  Intros.
-  Normal ``x/y+y/x``.
-  Reflexivity.
-  SplitRmult;Assumption.
-Save.
+  intros.
+  normal (x / y + y / x)%R.
+  reflexivity.
+  split_Rmult; assumption.
+Qed.
 
-Lemma norm1:(x:R)``x<>0``->``x+1<>0``->``/x+x/(x+1)==(x+1+x*x)*/x*/(x+1)``.
+Lemma norm1 :
+ forall x : R,
+ x <> 0%R ->
+ (x + 1)%R <> 0%R ->
+ (/ x + x / (x + 1))%R = ((x + 1 + x * x) * / x * / (x + 1))%R.
 Proof.
-  Intros.
-  Normal ``/x+x/(x+1)``.
-  Reflexivity.
-  SplitRmult;Assumption.
-Save.
+  intros.
+  normal (/ x + x / (x + 1))%R.
+  reflexivity.
+  split_Rmult; assumption.
+Qed.
 
-Lemma norm2:(x,y:R)``x-y<>0``->
-                   ``x*x/((x-y)*(x-y))-y*y/((x-y)*(x-y))==(x+y)/(x-y)``.
+Lemma norm2 :
+ forall x y : R,
+ (x - y)%R <> 0%R ->
+ (x * (x / ((x - y) * (x - y))) - y * (y / ((x - y) * (x - y))))%R =
+ ((x + y) / (x - y))%R.
 Proof.
-  Intros x y H.
-  Normal ``x*x/((x-y)*(x-y))-y*y/((x-y)*(x-y))``.
-  Reflexivity.
-  Unfold Rminus in H;SplitRmult;Assumption.
-Save.
+  intros x y H.
+  normal (x * (x / ((x - y) * (x - y))) - y * (y / ((x - y) * (x - y))))%R.
+  reflexivity.
+  unfold Rminus in H; split_Rmult; assumption.
+Qed.
 
-Lemma norm3:(x,y:R)``x-y<>0``->``x+y<>0``->``x*x-y*y<>0``->
-                   ``x/(x-y)+y/(x+y)+2*y*y/(x*x-y*y)==(x+y)/(x-y)``.
+Lemma norm3 :
+ forall x y : R,
+ (x - y)%R <> 0%R ->
+ (x + y)%R <> 0%R ->
+ (x * x - y * y)%R <> 0%R ->
+ (x / (x - y) + y / (x + y) + 2 * y * (y / (x * x - y * y)))%R =
+ ((x + y) / (x - y))%R.
 Proof.
-  Intros x y H H0 H1.
-  Normal ``x/(x-y)+y/(x+y)+2*y*y/(x*x-y*y)``.
-  Unfold Rminus;Reflexivity.
-  Unfold Rminus in H H1;SplitRmult;Assumption.
-Save.
+  intros x y H H0 H1.
+  normal (x / (x - y) + y / (x + y) + 2 * y * (y / (x * x - y * y)))%R.
+  unfold Rminus in |- *; reflexivity.
+  unfold Rminus in H, H1; split_Rmult; assumption.
+Qed.
 
 (**** Eval <Maple Tactic> in ****)
 
-Lemma eval_simp0:(x,y:R)``x*y<>0``->``x/x+y/y==2``.
+Lemma eval_simp0 :
+ forall x y : R, (x * y)%R <> 0%R -> (x / x + y / y)%R = 2%R.
 Proof.
-  Intros.
-  Let t = Eval Simplify in ``x/x+y/y`` In
-  Replace ``x/x+y/y`` with t.
-  Reflexivity.
-  Field;Assumption.
+  intros.
+  let t := eval simplify in (x / x + y / y)%R in
+  replace (x / x + y / y)%R with t.
+  reflexivity.
+  field; assumption.
+Qed.
+
+Lemma eval_fact0 :
+ forall x y : R, x <> 0%R -> y <> 0%R -> (x / x + x / y)%R = ((x + y) / y)%R.
+Proof.
+  intros.
+  let t := eval factor in (x / x + x / y)%R in
+  replace (x / x + x / y)%R with t.
+  rewrite Rplus_comm; reflexivity.
+  field; split_Rmult; assumption.
+Qed.
+
+Lemma eval_expd0 :
+ forall x y : R,
+ ((3 * x + 3) * (y - 5 / 3))%R = (3 * x * y + - (5 * x) + 3 * y + -5)%R.
+Proof.
+  intros.
+  let t := eval expand in ((3*x+3)*(y-5/3))%R in
+  replace ((3*x+3)*(y-5/3))%R with t.
+  reflexivity.
+  field;discrR.
 Save.
 
-Lemma eval_fact0:(x,y:R)``x<>0``->``y<>0``->``x/x+x/y==(x+y)/y``.
+Lemma eval_norm0 :
+ forall x y : R,
+ x <> 0%R -> y <> 0%R -> (y / (x * y) + y / x)%R = ((1 + y) / x)%R.
 Proof.
-  Intros.
-  Let t = Eval Factor in ``x/x+x/y`` In
-  Replace ``x/x+x/y`` with t.
-  Rewrite Rplus_sym;Reflexivity.
-  Field;SplitRmult;Assumption.
-Save.
+  intros.
+  let t := eval normal in (y / (x * y) + y / x)%R in
+  replace (y / (x * y) + y / x)%R with t.
+  unfold Rdiv in |- *; reflexivity.
+  field; split_Rmult; assumption.
+Qed.
 
-Lemma eval_expd0:(x,y:R)``(3*x+3)*(y-5/3)==3*x*y+ -(5*x)+3*y+ -5``.
-Proof.
-  Intros.
-  Let t = Eval Expand in ``(3*x+3)*(y-5/3)`` In
-  Replace ``(3*x+3)*(y-5/3)`` with t.
-  Reflexivity.
-  Field;DiscrR.
-Save.
+Definition def0 := Eval simplify in (1 / 1)%R.
 
-Lemma eval_norm0:(x,y:R)``x<>0``->``y<>0``->``y/(x*y)+y/x==(1+y)/x``.
-Proof.
-  Intros.
-  Let t = Eval Normal in ``y/(x*y)+y/x`` In
-  Replace ``y/(x*y)+y/x`` with t.
-  Unfold Rdiv;Reflexivity.
-  Field;SplitRmult;Assumption.
-Save.
+Definition def1 (x y:R) := Eval simplify in ((x/y+y)*y)%R.
 
-Definition def0 := Eval Simplify in ``1/1``.
+Definition def2 (x y:R) := Eval factor in (x*y+x)%R .
 
-Definition def1 [x,y:R] := Eval Simplify in ``(x/y+y)*y``.
+Definition def3 (x y:R) := Eval factor in (x*y-3*x+7*y-21)%R.
 
-Definition def2 [x,y:R] := Eval Factor in ``x*y+x`` .
+Definition def4 (x y:R) := Eval expand in ((x+y)*x)%R.
 
-Definition def3 [x,y:R] := Eval Factor in ``x*y-3*x+7*y-21``.
+Definition def5 (x y:R) := Eval expand in ((x-7)*(y+4))%R.
 
-Definition def4 [x,y:R] := Eval Expand in ``(x+y)*x``.
+Definition def6 (x y:R) := Eval normal in (/x+/y)%R.
 
-Definition def5 [x,y:R] := Eval Expand in ``(x-7)*(y+4)``.
-
-Definition def6 [x,y:R] := Eval Normal in ``/x+/y``.
-
-Definition def7 [x,y:R] := Eval Normal in ``x*x*y/(x+y)+y*x*y/(x+y)``.
+Definition def7 (x y:R) := Eval normal in (x*x*y/(x+y)+y*x*y/(x+y))%R.
