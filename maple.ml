@@ -273,7 +273,7 @@ let name_rels env c =
       let id = match na with
 	| Name id -> id
 	| _ -> next_ident_away (id_of_string "x") (ids_of_context env) in
-      (push_named (substl_decl subst (id,b,t)) env, mkVar id :: subst))
+      (push_named (substl_named_decl subst (id,b,t)) env, mkVar id :: subst))
       env
       ~init:(reset_with_named_context (named_context_val env) env, []) in
   (env, List.map destVar subst, substl subst c)
