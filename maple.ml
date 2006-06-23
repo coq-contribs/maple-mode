@@ -231,37 +231,27 @@ let maple_call exe =
     end
   end
 
-(* Returns the constr tactic_arg or globalizes the identifier tactic_arg *)
-let constr_or_id env tca =
-  try (constr_of_VConstr env tca)
-  with Anomaly ("constr_of_Constr",_) ->
-    constr_of_id env (id_of_Identifier env tca)
-
 let constrInArg x = valueIn (VConstr x)
 
 (* Applies the metaification *)
-let metaification ist gl th csr =
+let metaification g th csr =
   let ca = constrInArg csr in
-  let tac = glob_tactic <:tactic<(build_varlist $th $ca)>> in
-  let lvar = constr_of_VConstr (pf_env gl) (val_interp ist gl tac) in
-  let meta = constr_or_id (pf_env gl) (val_interp ist gl 
-    (let lvar = constrInArg lvar in
-     glob_tactic <:tactic<(interp_A $th $lvar $ca)>>)) in
+  let lvar = eval_ltac_constr g <:tactic< build_varlist $th $ca >> in
+  let lvar_arg = constrInArg lvar in
+  let meta = eval_ltac_constr g <:tactic< interp_A $th $lvar_arg $ca >> in
   (constrIn lvar,meta)
 
 (* Generic operation of Maple *)
-let operation ope csr ist g =
+let operation ope csr g =
   let th = guess_theory (pf_env g) (project g) [csr]
   and ca = constrInArg csr in
   let th_arg = constrInArg th in
-  let cex = constr_of_VConstr (pf_env g) (val_interp ist g
-    (glob_tactic <:tactic<init_exp $th_arg $ca>>)) in
-  let (lvar,meta) = metaification ist g th_arg cex in
+  let cex = eval_ltac_constr g <:tactic< init_exp $th_arg $ca >> in
+  let (lvar,meta) = metaification g th_arg cex in
   let ste = string_of_expr (expra_to_expr meta) in
   let exs = constrIn (expr_to_expra (maple_call (ope^"("^ste^")"))) in
-  constr_of_VConstr (pf_env g) (val_interp ist g
-    (let th = constrIn th in
-    glob_tactic <:tactic<eval compute in (interp_ExprA $th $lvar $exs)>>))
+  let th = constrIn th in
+  eval_ltac_constr g <:tactic<eval compute in (interp_ExprA $th $lvar $exs)>>
 
 (* Replace rels by names *)
 open Environ
@@ -281,12 +271,9 @@ let name_rels env c =
 (* Applies the operation on the constant body *)
 let apply_ope ope env sigma c =
   let (env,vars,c) = name_rels env c in
-  let ist = {lfun=[];debug=get_debug ()} in
-  let g =
-    Proof_trees.mk_goal (named_context_val env) (*Dummy goal*) mkProp
-  in
+  let g = Proof_trees.mk_goal (named_context_val env) (*Dummy goal*) mkProp in
   let g = { it=g; sigma=sigma } in
-  subst_vars vars (operation ope c ist g)
+  subst_vars vars (operation ope c g)
 
 (* Declare the new reductions (used by "eval" commands and "Eval" constr) *)
  let _ = Redexpr.declare_red_expr "simplify" (apply_ope "simplify") in
@@ -296,13 +283,11 @@ let apply_ope ope env sigma c =
 
 (* Generic tactic operation *)
 let tactic_operation ope csr g =
-  let ist = {lfun=[];debug=get_debug ()} in
-  let css = operation ope csr ist g in
+  let css = operation ope csr g in
   let tac = 
     Tacexpr.TacArg (valueIn (VTactic (dummy_loc,Equality.replace csr css)))
   and fld = Tacexpr.TacArg (valueIn (VTactic (dummy_loc,field))) in
-  (interp_tac_gen ist.lfun ist.debug
-    <:tactic<$tac;[idtac|$fld]>>) g
+  interp <:tactic<$tac;[idtac|$fld]>> g
 
 (* Iterates the tactic over the term list *)
 let tac_iter tac lcr =
