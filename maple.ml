@@ -271,7 +271,7 @@ let name_rels env c =
 (* Applies the operation on the constant body *)
 let apply_ope ope env sigma c =
   let (env,vars,c) = name_rels env c in
-  let g = Proof_trees.mk_goal (named_context_val env) (*Dummy goal*) mkProp in
+  let g = Proof_trees.mk_goal (named_context_val env) (*Dummy goal*) mkProp None in
   let g = { it=g; sigma=sigma } in
   subst_vars vars (operation ope c g)
 
