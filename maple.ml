@@ -38,9 +38,9 @@ let print_logo maple =
   let ver = version maple in
   begin
     print_endline ("\nCoq is now powered by Maple ["^ver^"]\n");
-    print_endline "    |\^/|              v";
-    print_endline "._|\|   |/|_.  ====>  <O___,,";
-    print_endline " \  MAPLE  /   ====>   \VV/";
+    print_endline "    |\\^/|              v";
+    print_endline "._|\\|   |/|_.  ====>  <O___,,";
+    print_endline " \\  MAPLE  /   ====>   \\VV/";
     print_endline " <____ ____>            //";
     print_endline "      |"
   end

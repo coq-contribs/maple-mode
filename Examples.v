@@ -20,7 +20,7 @@ Lemma simp1 :
 Proof.
   intros.
   simplify ((1 + x) / (1 + x))%R.
-  ring (1 * (1 + y) - (1 + y))%R.
+  ring_simplify (1 * (1 + y) - (1 + y))%R.
   unfold Rge in |- *; right; reflexivity.
   assumption.
 Qed.
@@ -168,13 +168,13 @@ Qed.
 (**** Eval <Maple Tactic> in ****)
 
 Lemma eval_simp0 :
- forall x y : R, (x * y)%R <> 0%R -> (x / x + y / y)%R = 2%R.
+ forall x y : R, x <> 0%R -> y <> 0%R -> (x / x + y / y)%R = 2%R.
 Proof.
   intros.
   let t := eval simplify in (x / x + y / y)%R in
   replace (x / x + y / y)%R with t.
   reflexivity.
-  field; assumption.
+  field; auto.
 Qed.
 
 Lemma eval_fact0 :
@@ -184,7 +184,7 @@ Proof.
   let t := eval factor in (x / x + x / y)%R in
   replace (x / x + x / y)%R with t.
   rewrite Rplus_comm; reflexivity.
-  field; split_Rmult; assumption.
+  field; auto.
 Qed.
 
 Lemma eval_expd0 :
@@ -195,7 +195,7 @@ Proof.
   let t := eval expand in ((3*x+3)*(y-5/3))%R in
   replace ((3*x+3)*(y-5/3))%R with t.
   reflexivity.
-  field;discrR.
+  field.
 Save.
 
 Lemma eval_norm0 :
@@ -206,7 +206,7 @@ Proof.
   let t := eval normal in (y / (x * y) + y / x)%R in
   replace (y / (x * y) + y / x)%R with t.
   unfold Rdiv in |- *; reflexivity.
-  field; split_Rmult; assumption.
+  field; auto.
 Qed.
 
 Definition def0 := Eval simplify in (1 / 1)%R.

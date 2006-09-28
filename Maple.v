@@ -1,6 +1,6 @@
 (* Maple.v *)
 
 Require Export Datatypes.
-Require Export Field.
+Require Export LegacyField.
 
 Declare ML Module "maple".
