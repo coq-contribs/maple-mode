@@ -81,7 +81,7 @@ type expr =
 (* Builds the constants of the Field reflexion structure *)
 let path_field_theory =
   make_dirpath (List.map id_of_string
-    (List.rev ["Coq";"field";"Field_Theory"]))
+    (List.rev ["Coq";"field";"LegacyField_Theory"]))
 
 let path_nat =  make_dirpath (List.map id_of_string
     (List.rev ["Coq";"Init";"Datatypes"]))

@@ -1,7 +1,7 @@
 (* Examples.v *)
 
 Require Export Maple.
-Require Export Reals.
+Require Export Reals LegacyRfield.
 Open Scope R_scope.
 
 (**** Tactic Simplify ****)
