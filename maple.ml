@@ -5,7 +5,7 @@ open Declare
 open Field
 open Names
 open Libnames
-open Options
+open Flags
 open Pp
 open Proof_type
 open Safe_typing
@@ -190,7 +190,12 @@ let left_assoc x y =
   | _ -> Mult (x,y)
 
 (* Parsing of Maple expressions *)
-let gram = Grammar.create (Plexer.make ());;
+IFDEF CAMLP5 THEN
+let gram = Grammar.gcreate (Plexer.gmake ())
+ELSE
+let gram = Grammar.create (Plexer.make ())
+END;;
+
 let mexpr_s = Grammar.Entry.create gram "mexpr_s";;
 let mexpr = Grammar.Entry.create gram "mexpr";;
 
