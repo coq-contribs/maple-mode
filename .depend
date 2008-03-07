@@ -1,8 +1,0 @@
-maple.cmo: maple.ml
-maple.cmx: maple.ml
-Examples.vo: Examples.v Maple.vo
-Examples.vi: Examples.v Maple.vo
-Maple.vo: Maple.v maple.cmo
-Maple.vi: Maple.v maple.cmo
-Examples.html: Examples.v Maple.html
-Maple.html: Maple.v maple.cmo

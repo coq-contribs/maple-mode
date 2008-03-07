@@ -1,3 +1,4 @@
+-R . MapleMode
 fake_maple
 COQC = "export MAPLE=./fake_maple/fake_maple ; $(COQBIN)coqc"
 Examples.v
