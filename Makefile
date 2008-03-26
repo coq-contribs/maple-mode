@@ -77,11 +77,8 @@ GFILES:=$(VFILES:.v=.g)
 HTMLFILES:=$(VFILES:.v=.html)
 GHTMLFILES:=$(VFILES:.v=.g.html)
 
-all: fake_maple\
-  Examples.vo\
-  Maple.vo\
+all: $(VOFILES) fake_maple\
   maple.cmo
-
 spec: $(VIFILES)
 
 gallina: $(GFILES)
@@ -104,6 +101,15 @@ all-gal.ps: $(VFILES)
 
 ###################
 #                 #
+# Custom targets. #
+#                 #
+###################
+
+maple.cmo: maple.ml fake_maple
+	$(CAMLC) $(ZDEBUG) $(ZFLAGS) $(PP) $<
+
+###################
+#                 #
 # Subdirectories. #
 #                 #
 ###################
@@ -118,17 +124,6 @@ fake_maple:
 ####################
 
 .PHONY: all opt byte archclean clean install depend html fake_maple
-
-.SUFFIXES: .mli .ml .cmo .cmi .cmx .v .vo .vi .g .html .tex .g.tex .g.html
-
-%.cmi: %.mli
-	$(CAMLC) $(ZDEBUG) $(ZFLAGS) $<
-
-%.cmo: %.ml
-	$(CAMLC) $(ZDEBUG) $(ZFLAGS) $(PP) $<
-
-%.cmx: %.ml
-	$(CAMLOPTC) $(ZDEBUG) $(ZFLAGS) $(PP) $<
 
 %.vo %.glob: %.v
 	$(COQC) -dump-glob $*.glob $(COQDEBUG) $(COQFLAGS) $*
@@ -151,13 +146,8 @@ fake_maple:
 %.g.html: %.v %.glob
 	$(COQDOC) -glob-from $*.glob -html -g $< -o $@
 
-%.v.d.raw: %.v
-	$(COQDEP) -slash $(COQLIBS) "$<" > "$@"\
-	  || ( RV=$$?; rm -f "$@"; exit $${RV} )
-
-%.v.d: %.v.d.raw
-	$(HIDE)sed 's/\(.*\)\.vo[[:space:]]*:/\1.vo \1.glob:/' < "$<" > "$@" \
-	  || ( RV=$$?; rm -f "$@"; exit $${RV} )
+%.v.d: %.v
+	$(COQDEP) -glob -slash $(COQLIBS) "$<" > "$@" || ( RV=$$?; rm -f "$@"; exit $${RV} )
 
 byte:
 	$(MAKE) all "OPT:=-byte"
@@ -168,7 +158,6 @@ opt:
 install:
 	mkdir -p `$(COQC) -where`/user-contrib
 	cp -f $(VOFILES) `$(COQC) -where`/user-contrib
-	cp -f *.cmo `$(COQC) -where`/user-contrib
 	(cd fake_maple ; $(MAKE) install)
 
 Makefile: Make
@@ -181,6 +170,7 @@ clean:
 	rm -f *.cmo *.cmi *.cmx *.o $(VOFILES) $(VIFILES) $(GFILES) *~
 	rm -f all.ps all-gal.ps all.glob $(VFILES:.v=.glob) $(HTMLFILES) $(GHTMLFILES) $(VFILES:.v=.tex) $(VFILES:.v=.g.tex) $(VFILES:.v=.v.d)
 	- rm -rf html
+	- rm -f maple.cmo
 	(cd fake_maple ; $(MAKE) clean)
 
 archclean:
