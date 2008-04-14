@@ -256,7 +256,12 @@ let operation ope csr g =
   let ste = string_of_expr (expra_to_expr meta) in
   let exs = constrIn (expr_to_expra (maple_call (ope^"("^ste^")"))) in
   let th = constrIn th in
-  eval_ltac_constr g <:tactic<eval compute in (interp_ExprA $th $lvar $exs)>>
+  (* warning: $mlvars allowed only in tactics, not in constr *)
+  eval_ltac_constr g 
+  <:tactic< let th := constr:$th in
+            let lvar := constr:$lvar in
+            let exs := constr:$exs in
+            eval compute in (interp_ExprA th lvar exs) >>
 
 (* Replace rels by names *)
 open Environ
