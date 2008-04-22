@@ -11,3 +11,4 @@ Description: This contribution is an interface between Coq and Maple. In
   carried out by these tactics are proved thanks to the tactic Field. These
   tactics can be also used as functions by means of the Eval ... In command.
 Keywords: Maple Simplify Factor Field Polynomial Fraction
+Category: Miscellaneous/Coq Extensions
