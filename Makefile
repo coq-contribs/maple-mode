@@ -24,7 +24,7 @@
 #########################
 
 CAMLP4LIB:=$(shell $(CAMLBIN)camlp5 -where 2> /dev/null || $(CAMLBIN)camlp4 -where)
-OCAMLLIBS:=-I $(CAMLP4LIB)
+OCAMLLIBS:=-I $(CAMLP4LIB) 
 COQLIBS:= -R . MapleMode
 COQDOCLIBS:=-R . MapleMode
 
@@ -35,8 +35,21 @@ COQDOCLIBS:=-R . MapleMode
 ##########################
 
 CAMLP4:=$(notdir $(CAMLP4LIB))
-COQSRC:=$(shell $(COQBIN)coqc -where)
-COQSRCLIBS:=-I $(COQSRC)
+COQSRC:=$(COQTOP)
+COQSRCLIBS:=-I $(COQTOP)/kernel -I $(COQTOP)/lib \
+  -I $(COQTOP)/library -I $(COQTOP)/parsing \
+  -I $(COQTOP)/pretyping -I $(COQTOP)/interp \
+  -I $(COQTOP)/proofs -I $(COQTOP)/tactics \
+  -I $(COQTOP)/toplevel -I $(COQTOP)/contrib/cc \
+  -I $(COQTOP)/contrib/dp -I $(COQTOP)/contrib/extraction \
+  -I $(COQTOP)/contrib/field -I $(COQTOP)/contrib/firstorder \
+  -I $(COQTOP)/contrib/fourier -I $(COQTOP)/contrib/funind \
+  -I $(COQTOP)/contrib/interface -I $(COQTOP)/contrib/jprover \
+  -I $(COQTOP)/contrib/micromega -I $(COQTOP)/contrib/omega \
+  -I $(COQTOP)/contrib/ring -I $(COQTOP)/contrib/romega \
+  -I $(COQTOP)/contrib/rtauto -I $(COQTOP)/contrib/setoid_ring \
+  -I $(COQTOP)/contrib/subtac -I $(COQTOP)/contrib/xml \
+  -I $(CAMLP4LIB)
 ZFLAGS:=$(OCAMLLIBS) $(COQSRCLIBS)
 override OPT:=-byte
 COQFLAGS:=-q $(OPT) $(COQLIBS) $(OTHERFLAGS) $(COQ_XML)
@@ -50,7 +63,7 @@ CAMLLINK:=$(CAMLBIN)ocamlc -rectypes
 CAMLOPTLINK:=$(CAMLBIN)ocamlopt -rectypes
 GRAMMARS:=grammar.cma
 CAMLP4EXTEND:=pa_extend.cmo pa_macro.cmo q_MLast.cmo
-PP:=-pp "$(CAMLBIN)$(CAMLP4)o -I . -I $(COQSRC) $(CAMLP4EXTEND) $(GRAMMARS) -impl"
+PP:=-pp "$(CAMLBIN)$(CAMLP4)o -I . -I $(COQTOP)/parsing $(CAMLP4EXTEND) $(GRAMMARS) -impl"
 COQC=export MAPLE=./fake_maple/fake_maple ; $(COQBIN)coqc
 
 ###################################
