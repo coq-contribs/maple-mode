@@ -294,10 +294,7 @@ let apply_ope ope env sigma c =
 (* Generic tactic operation *)
 let tactic_operation ope csr g =
   let css = operation ope csr g in
-  let tac = 
-    Tacexpr.TacArg (valueIn (VTactic (dummy_loc,Equality.replace csr css)))
-  and fld = Tacexpr.TacArg (valueIn (VTactic (dummy_loc,field))) in
-  interp <:tactic<$tac;[idtac|$fld]>> g
+   tclTHENLAST (Equality.replace csr css) field g
 
 (* Iterates the tactic over the term list *)
 let tac_iter tac lcr =
