@@ -1,7 +1,9 @@
+-byte
 -R . MapleMode
-fake_maple
 COQC = "export MAPLE=./fake_maple/fake_maple ; $(COQBIN)coqc"
 Examples.v
 Maple.v
--custom "$(CAMLC) $(ZDEBUG) $(ZFLAGS) $(PP) $<" "maple.ml fake_maple" maple.cmo
--byte
+maple.ml
+fake_maple/fake_maple.ml
+-custom "$(CAMLLINK) -o $@ str.cma $<" "fake_maple/fake_maple.cmo" "fake_maple/fake_maple"
+-custom "$(COQC) $(COQDEBUG) $(COQFLAGS) $<" "Maple.v fake_maple/fake_maple" "Maple.vo"

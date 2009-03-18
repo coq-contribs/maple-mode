@@ -1,21 +1,20 @@
 (* maple.ml4 *)
 
-open Command
-open Declare
-open Field
-open Names
-open Libnames
-open Flags
+open Util
 open Pp
+open Flags
+
+open Names
+open Nameops
+open Term
+open Termops
+open Environ
+open Reductionops
+open Libnames
 open Proof_type
-open Safe_typing
 open Tacinterp
 open Tacticals
-open Tacmach
-open Term
-open Util
-open Vernacinterp
-open Evd
+open Tacexpr
 
 (* Returns the version of Maple *)
 let version maple =
@@ -35,14 +34,16 @@ let version maple =
 
 (* Prints the Coq-Maple logo *)
 let print_logo maple =
-  let ver = version maple in
+  let ver =
+    if Filename.basename maple = "fake_maple" then "fake_maple"
+    else version maple in
   begin
     print_endline ("\nCoq is now powered by Maple ["^ver^"]\n");
-    print_endline "    |\\^/|              v";
-    print_endline "._|\\|   |/|_.  ====>  <O___,,";
-    print_endline " \\  MAPLE  /   ====>   \\VV/";
-    print_endline " <____ ____>            //";
-    print_endline "      |"
+    print_endline "       |\\^/|              v";
+    print_endline "   ._|\\|   |/|_.  ====>  <O___,,";
+    print_endline "    \\  MAPLE  /   ====>   \\VV/";
+    print_endline "    <____ ____>            //";
+    print_endline "         |"
   end
 
 (* Tries the MAPLE environment variable or else simply maple *)
@@ -52,142 +53,214 @@ let select_name () =
       maple
     else ""
   with Not_found ->
-    if (Sys.command "sh -c \"echo quit | maple -q\" 2>/dev/null")=0 then
-      "maple"
-    else ""
+    try
+      if (Sys.command "sh -c \"echo quit | maple -q\" 2>/dev/null")=0 then
+	"maple"
+      else ""
+    with Not_found -> ""
 
 (* Verifies that Maple is available *)
 let is_maple flag =
   let maple = select_name () in
-  begin
-    if maple<>"" then
-      (if flag then if_verbose print_logo maple)
-    else
-      (if flag then print_endline "\nError: Cannot find Maple"
-               else errorlabstrm "is_maple" (str "Cannot find Maple"));
-    maple
-  end
+  if maple<>"" then
+    (if flag then if_verbose print_logo maple)
+  else
+    (if flag then print_endline "\nError: Cannot find Maple"
+     else errorlabstrm "is_maple" (str "Cannot find Maple"));
+  maple
 
 (* The expression data type *)
 type expr =
-  | Zero
-  | One
+  | Cst of Bigint.bigint
   | Var of int
+  | Add of expr*expr
   | Opp of expr
+  | Mul of expr*expr
   | Inv of expr
-  | Plus of expr*expr
-  | Mult of expr*expr
+  | Pow of expr*int
+
+let constr_from dir s =
+  let id = id_of_string s in
+  try
+    constr_of_reference (Nametab.absolute_reference (make_path dir id))
+  with Not_found -> anomaly ("Could not find '"^s^"'.")
 
 (* Builds the constants of the Field reflexion structure *)
 let path_field_theory =
   make_dirpath (List.map id_of_string
-    (List.rev ["Coq";"field";"LegacyField_Theory"]))
+    (List.rev ["Coq";"setoid_ring";"Field_theory"]))
+
+let fcst = constr_from path_field_theory "FEc"
+let fadd = constr_from path_field_theory "FEadd"
+let fsub = constr_from path_field_theory "FEsub"
+let fopp = constr_from path_field_theory "FEopp"
+let fmul = constr_from path_field_theory "FEmul"
+let fdiv = constr_from path_field_theory "FEdiv"
+let finv = constr_from path_field_theory "FEinv"
+let fpow = constr_from path_field_theory "FEpow"
+let fvar = constr_from path_field_theory "FEX"
 
 let path_nat =  make_dirpath (List.map id_of_string
     (List.rev ["Coq";"Init";"Datatypes"]))
 
-let constr_from dir s =
-  let id = id_of_string s in
-  constr_of_reference (Nametab.absolute_reference (make_path dir id))
-
-let eazero = constr_from path_field_theory "EAzero"
-let eaone  = constr_from path_field_theory "EAone"
-let eaplus = constr_from path_field_theory "EAplus"
-let eamult = constr_from path_field_theory "EAmult"
-let eaopp  = constr_from path_field_theory "EAopp"
-let eainv  = constr_from path_field_theory "EAinv"
-let eavar  = constr_from path_field_theory "EAvar"
-
 let eO = constr_from path_nat "O"
 let eS = constr_from path_nat "S";;
 
-(* Gives an int from a nat constr *)
-let rec int_of_constr csr =
-  match (kind_of_term csr) with
-  | c when c = (kind_of_term eO) -> 0
-  | App(c,t) when c = eS -> (int_of_constr t.(0))+1
-  | _ ->
-    errorlabstrm "int_of_constr"
-      (str "This term is not a closed natural number")
+let path_z =  make_dirpath (List.map id_of_string
+    (List.rev ["Coq";"ZArith";"BinInt"]))
+let path_n =  make_dirpath (List.map id_of_string
+    (List.rev ["Coq";"NArith";"BinNat"]))
+let path_pos =  make_dirpath (List.map id_of_string
+    (List.rev ["Coq";"NArith";"BinPos"]))
+
+let zcoq = constr_from path_z "Z"
+let z0   = constr_from path_z "Z0"
+let zpos = constr_from path_z "Zpos"
+let zneg = constr_from path_z "Zneg"
+let xH   = constr_from path_pos "xH"
+let xI   = constr_from path_pos "xI"
+let xO   = constr_from path_pos "xO"
+let n0   = constr_from path_n "N0"
+let npos = constr_from path_n "Npos"
+
+
+(* Generic transformers between various flavours of numbers *)
+type 'a pos = P1 | PO of 'a | PI of 'a
+type 'a z = Z0 | Zpos of 'a | Zneg of 'a
+let bin_trans (dz, dp) (f0, fpos, fneg, f1, f2n, f2n1) n =
+  let rec trad n =
+    match dp n with
+      | P1 -> f1
+      | PO p -> f2n (trad p)
+      | PI p -> f2n1 (trad p) in
+  match dz n with
+    | Z0 -> f0
+    | Zpos p -> fpos (trad p)
+    | Zneg p -> fneg (trad p)
+
+let mk_int =
+  (0, (fun x->x), (fun x-> -x), 1, (fun x->2*x), (fun x->2*x+1))
+
+let mk_bigint =
+  (Bigint.zero, (fun x->x), Bigint.neg, Bigint.one, Bigint.mult_2,
+   (fun x->Bigint.add_1(Bigint.mult_2 x)))
+
+let mk_pos =
+  (xH, (fun x->x), (fun _ -> failwith"not a positive"),
+   xH, (fun x->mkApp(xO,[|x|])), (fun x->mkApp(xI,[|x|])))
+
+let mk_N =
+  (n0, (fun x->mkApp(npos,[|x|])), (fun _ -> failwith"negative"),
+   xH, (fun x->mkApp(xO,[|x|])), (fun x->mkApp(xI,[|x|])))
+
+let mk_Z =
+  (z0, (fun x->mkApp(zpos,[|x|])), (fun x->mkApp(zneg,[|x|])), 
+   xH, (fun x->mkApp(xO,[|x|])), (fun x->mkApp(xI,[|x|])))
+
+let dest_int =
+  ((fun n ->
+      if n=0 then Z0
+      else if n<0 then Zneg n
+      else Zpos n),
+   (fun n -> 
+      if n=1 then P1
+      else if n mod 2 = 1 then PI (n/2) else PO (n/2)))
+
+let dest_bigint =
+  ((fun n ->
+      if n=Bigint.zero then Z0
+      else if Bigint.is_strictly_neg n then Zneg n
+      else Zpos n),
+   (fun n -> 
+      if n=Bigint.one then P1
+      else
+	let (q,r) = Bigint.div2_with_rest n in
+	if r then PI q else PO q))
+
+let whd_all t = whd_betadeltaiota (Global.env()) Evd.empty t
+
+let dest_pos =
+  ((fun p -> Zpos p),
+   (fun p ->
+      let p = whd_all p in
+      if p=xH then P1 else
+	match kind_of_term p with
+	    App(h,[|q|]) ->
+	      if h=xO then PO q
+	      else if h=xI then PI q
+	      else failwith "not a ground positive"
+	  | _ -> failwith "not a ground positive"))
+
+let dest_N =
+  ((fun n ->
+      let n = whd_all n in
+      if n=n0 then Z0 else
+	match kind_of_term n with
+	    App(h,[|q|]) when h=npos -> Zpos q
+	  | _ -> failwith "not a ground N natural"),
+   snd dest_pos)
+
+let dest_Z =
+  ((fun n ->
+      let n = whd_all n in
+      if n=z0 then Z0 else
+	match kind_of_term n with
+	    App(h,[|q|]) ->
+	      if h=zpos then Zpos q
+	      else if h=zneg then Zneg q
+	      else failwith "not a ground Z number"
+	  | _ -> failwith "not a ground Z number"),
+   snd dest_pos)
 
 (* Builds expr expressions from ExprA expressions *)
 let rec expra_to_expr csr =
-  match (kind_of_term csr) with
-  | c when c = (kind_of_term eazero) -> Zero
-  | c when c = (kind_of_term eaone)  -> One
-  | App(c,t) when (c = eaplus || c = eamult) ->
-    let e1 = expra_to_expr t.(0)
-    and e2 = expra_to_expr t.(1) in
-    if c = eaplus then Plus (e1,e2)
-    else Mult (e1,e2)
-  | App(c,t) when c = eaopp || c = eainv ->
-    let e = expra_to_expr t.(0) in
-    if c = eaopp then Opp e
-    else Inv e
-  | App(c,t) when c = eavar -> Var (int_of_constr t.(0))    
-  | _ -> errorlabstrm "expra_to_expr" (str "This term is not of type ExprA")
+  match kind_of_term csr with
+  | App(c,[|_;t1;t2|]) ->
+      let op = List.assoc c
+	[fadd,(fun () -> Add(expra_to_expr t1, expra_to_expr t2));
+	 fsub,(fun () -> Add(expra_to_expr t1, Opp(expra_to_expr t2)));
+	 fmul,(fun () -> Mul(expra_to_expr t1, expra_to_expr t2));
+	 fdiv,(fun () -> Mul(expra_to_expr t1, Inv(expra_to_expr t2)));
+	 fpow,(fun () -> Pow(expra_to_expr t1, bin_trans dest_N mk_int t2))] in
+      op()
+  | App(c,[|_;t|]) ->
+      let op = List.assoc c
+	[fopp,(fun () -> Opp(expra_to_expr t));
+	 finv,(fun () -> Inv(expra_to_expr t));
+	 fvar,(fun () -> Var(bin_trans dest_pos mk_int t));
+	 fcst,(fun () -> Cst(bin_trans dest_Z mk_bigint t))] in
+      op()
+  | _ -> raise Not_found
 
-(* Gives a nat constr from an int *)
-let rec constr_of_int n =
-  if n = 0 then eO
-  else applist (eS,[constr_of_int (n-1)])
+let expra_to_expr c =
+  try expra_to_expr c
+  with Not_found ->
+    errorlabstrm "expra_to_expr" (str "This term is not of type FExpr")
 
 (* Builds ExprA expressions from expr expressions *)
 let rec expr_to_expra = function
-  | Zero -> eazero
-  | One  -> eaone
-  | Var n -> applist (eavar,[constr_of_int n])
-  | Opp e -> applist (eaopp,[expr_to_expra e])
-  | Inv e -> applist (eainv,[expr_to_expra e])
-  | Plus (e1,e2) -> applist (eaplus,[expr_to_expra e1;expr_to_expra e2])
-  | Mult (e1,e2) -> applist (eamult,[expr_to_expra e1;expr_to_expra e2])
+  | Cst n -> mkApp (fcst,[|zcoq;bin_trans dest_bigint mk_Z n|])
+  | Var n -> mkApp (fvar,[|zcoq;bin_trans dest_int mk_pos n|])
+  | Opp e -> mkApp (fopp,[|zcoq;expr_to_expra e|])
+  | Inv e -> mkApp (finv,[|zcoq;expr_to_expra e|])
+  | Add (e1,e2) -> mkApp (fadd,[|zcoq;expr_to_expra e1;expr_to_expra e2|])
+  | Mul (e1,e2) -> mkApp (fmul,[|zcoq;expr_to_expra e1;expr_to_expra e2|])
+  | Pow (e,n) -> mkApp (fpow,[|zcoq;expr_to_expra e;bin_trans dest_int mk_N n|])
 
 (* Prepares the call to Maple *)
 let rec string_of_expr = function
-  | Zero -> "0"
-  | One  -> "1"
-  | Var n -> "x"^(string_of_int n)
-  | Opp e -> "(-"^(string_of_expr e)^")"
-  | Inv e -> "(1/"^(string_of_expr e)^")"
-  | Plus (e1,e2) -> "("^(string_of_expr e1)^"+"^(string_of_expr e2)^")"
-  | Mult (e1,e2) -> "("^(string_of_expr e1)^"*"^(string_of_expr e2)^")"
-
-(* Gives the expr expression corresponding to an int *)
-let rec int_decomp m =
-  if Bigint.equal m Bigint.zero then [0] else
-  if Bigint.equal m Bigint.one then [1] else
-  let (m',b) = Bigint.euclid m Bigint.two in
-  (if Bigint.equal b Bigint.zero then 0 else 1) :: int_decomp m'
-
-let rec mexpr_of_int n =
- let list_ch = int_decomp n in
- let two = Plus (One,One) in
- let rec mk_r l =
-   match l with
-   | [] -> failwith "Error r_of_posint"
-   | [a] -> if a=1 then One else Zero
-   | a::[b] -> if a==1 then Plus (One,two) else two
-   | a::l' ->
-      if a=1 then Plus (One, Mult (two, mk_r l'))
-      else Mult (two, mk_r l')
- in mk_r list_ch
+  | Cst n -> Bigint.to_string n
+  | Var n -> "x"^string_of_int (n-1)
+  | Opp e -> "(-"^string_of_expr e^")"
+  | Inv e -> "(1/"^string_of_expr e^")"
+  | Add (e1,e2) -> "("^string_of_expr e1^"+"^string_of_expr e2^")"
+  | Mul (e1,e2) -> "("^string_of_expr e1^"*"^string_of_expr e2^")"
+  | Pow (e,n) -> "("^string_of_expr e^"^"^string_of_int n^")"
 
 (* Gives the index of xi *)
 let var_of_string x =
-  try int_of_string (String.sub x 1 ((String.length x)-1))
+  try int_of_string (String.sub x 1 ((String.length x)-1)) + 1
   with _ -> error "Unable to parse Maple answer"
-
-(* Expands the power operation *)
-let rec expand_power x n =
-  if n < 2 then assert false
-  else if n = 2 then Mult (x,x)
-  else Mult (expand_power x (n-1),x)
-
-(* Ensures left associativity for Mult (necessary after power unfoldings *)
-let left_assoc x y =
-  match y with
-  | Mult (a,b) -> Mult (Mult (x,a),b)
-  | _ -> Mult (x,y)
 
 (* Parsing of Maple expressions *)
 IFDEF CAMLP5 THEN
@@ -203,17 +276,17 @@ EXTEND
   mexpr_s: [ [ "p"; ":="; m = mexpr; ";" -> m ] ];
   mexpr:
     [ "plus" LEFTA
-      [ x = mexpr; "+"; y = mexpr -> Plus (x,y)
-      | x = mexpr; "-"; y = mexpr -> Plus (x,Opp y) ]
+      [ x = mexpr; "+"; y = mexpr -> Add (x,y)
+      | x = mexpr; "-"; y = mexpr -> Add (x,Opp y) ]
     | "mult" LEFTA
-      [ x = mexpr; "*"; y = mexpr -> left_assoc x y ]
+      [ x = mexpr; "*"; y = mexpr -> Mul (x,y) ]
     | "div" LEFTA
       [ INT "1"; "/"; x = mexpr -> Inv x
-      | x = mexpr; "/"; y = mexpr -> Mult (x,Inv y) ]
+      | x = mexpr; "/"; y = mexpr -> Mul (x,Inv y) ]
     | "simple" NONA
       [ "-"; x = mexpr -> Opp x
-      | x = mexpr; "^"; n = INT -> expand_power x (int_of_string n)
-      | n = INT -> mexpr_of_int (Bigint.of_string n)
+      | x = mexpr; "^"; n = INT -> Pow(x,int_of_string n)
+      | n = INT -> Cst(Bigint.of_string n)
       | x = LIDENT -> Var (var_of_string x)
       | "("; e = mexpr; ")" -> e ] ];
 END;;
@@ -236,37 +309,13 @@ let maple_call exe =
     end
   end
 
-let constrInArg x = valueIn (VConstr x)
-
-(* Applies the metaification *)
-let metaification g th csr =
-  let ca = constrInArg csr in
-  let lvar = eval_ltac_constr g <:tactic< build_varlist $th $ca >> in
-  let lvar_arg = constrInArg lvar in
-  let meta = eval_ltac_constr g <:tactic< interp_A $th $lvar_arg $ca >> in
-  (constrIn lvar,meta)
-
 (* Generic operation of Maple *)
 let operation ope csr g =
-  let th = guess_theory (pf_env g) (project g) [csr]
-  and ca = constrInArg csr in
-  let th_arg = constrInArg th in
-  let cex = eval_ltac_constr g <:tactic< init_exp $th_arg $ca >> in
-  let (lvar,meta) = metaification g th_arg cex in
-  let ste = string_of_expr (expra_to_expr meta) in
-  let exs = constrIn (expr_to_expra (maple_call (ope^"("^ste^")"))) in
-  let th = constrIn th in
-  (* warning: $mlvars allowed only in tactics, not in constr *)
-  eval_ltac_constr g 
-  <:tactic< let th := constr:$th in
-            let lvar := constr:$lvar in
-            let exs := constr:$exs in
-            eval compute in (interp_ExprA th lvar exs) >>
+  let ste = string_of_expr (expra_to_expr csr) in
+  let res = maple_call (ope^"("^ste^")") in
+  expr_to_expra res
 
 (* Replace rels by names *)
-open Environ
-open Nameops
-open Termops
 let name_rels env c =
   let (env,subst) =
     fold_rel_context (fun _ (na,b,t) (env,subst) ->
@@ -278,47 +327,77 @@ let name_rels env c =
       ~init:(reset_with_named_context (named_context_val env) env, []) in
   (env, List.map destVar subst, substl subst c)
 
-(* Applies the operation on the constant body *)
 let apply_ope ope env sigma c =
   let (env,vars,c) = name_rels env c in
-  let g = Proof_trees.mk_goal (named_context_val env) (*Dummy goal*) mkProp None in
-  let g = { it=g; sigma=sigma } in
-  subst_vars vars (operation ope c g)
+  let g =
+    Proof_trees.mk_goal (named_context_val env) (*Dummy goal*) mkProp None in
+  let g = { Evd.it=g; Evd.sigma=sigma } in
+  subst_vars vars (ope c g)
+
+let maple ope = apply_ope (operation ope)
 
 (* Declare the new reductions (used by "eval" commands and "Eval" constr) *)
- let _ = Redexpr.declare_red_expr "simplify" (apply_ope "simplify") in
- let _ = Redexpr.declare_red_expr "factor" (apply_ope "factor") in
- let _ = Redexpr.declare_red_expr "expand" (apply_ope "expand") in
- let _ = Redexpr.declare_red_expr "normal" (apply_ope "normal") in ()
-
-(* Generic tactic operation *)
-let tactic_operation ope csr g =
-  let css = operation ope csr g in
-   tclTHENLAST (Equality.replace csr css) field g
+let _ = Redexpr.declare_red_expr "raw_simplify" (maple "simplify") in
+let _ = Redexpr.declare_red_expr "raw_factor" (maple "factor") in
+let _ = Redexpr.declare_red_expr "raw_expand" (maple "expand") in
+let _ = Redexpr.declare_red_expr "raw_normal" (maple "normal") in ()
 
 (* Iterates the tactic over the term list *)
 let tac_iter tac lcr =
   List.fold_right (fun c a -> tclTHENFIRST (tac c) a) lcr tclIDTAC
 
-(* Builds the tactic from the name *)
-let build_tactic nme = tac_iter (tactic_operation nme)
 
-(* Declaration of the generic tactic *)
 TACTIC EXTEND maple_fun_simplify
-| [ "simplify" ne_constr_list(cl) ] -> [ build_tactic "simplify" cl ]
+| [ "tac_iter" tactic0(tac) ne_constr_list(cl) ] ->
+     [ tac_iter (fun c -> Newring.ltac_apply (fst tac) [Newring.carg c]) cl ]
 END
 
-TACTIC EXTEND maple_fun_factor
-| [ "factor" ne_constr_list(cl) ] -> [ build_tactic "factor" cl ]
-END
+let constr_from_goal (gls,_) =
+  match gls.Evd.it with
+      [{Evd.evar_concl=g}] ->
+	(match kind_of_term g with
+	     Prod(_,eq,_) ->
+	       (match kind_of_term eq with
+		    App(h,[|_;lhs;_|]) -> lhs
+		  | _ -> failwith "ill-formed goal")
+	   | _ -> failwith "ill-formed goal")
+    | _ -> failwith "ill-formed goal"
 
-TACTIC EXTEND maple_fun_expand
-| [ "expand" ne_constr_list(cl) ] -> [ build_tactic "expand" cl ]
-END
+let red_of_tac tac c g =
+  let ist =
+    { lfun = []; avoid_ids = [];
+      debug = Tactic_debug.DebugOff; trace = [] } in
+(*  let tac = ltac_letin ("F", Tacexp tac) (ltac_lcall "F" [carg c]) in*)
+  let tac = Newring.ltac_call tac [Newring.carg c] in
+  match val_interp ist g tac with
+    | VConstr c -> c
+    | VRTactic res -> constr_from_goal res
+    | v ->
+	constr_from_goal (interp (Tacexpr.TacArg(valueIn v)) g)
 
-TACTIC EXTEND maple_fun_normal
-| [ "normal" ne_constr_list(cl) ] -> [ build_tactic "normal" cl ]
+let apply_tac tac =
+  apply_ope (red_of_tac tac)
+
+(*
+let declare_redexpr id tac =
+  Redexpr.declare_red_expr id (apply_tac tac)
+
+VERNAC COMMAND EXTEND NewRed
+  | [ "Add" "Reduction" ident(id) ":=" tactic(tac) ] ->
+    [ declare_redexpr (string_of_id id) (glob_tactic tac) ]
 END
+*)
+let maple_tac s =
+  let dp = make_dirpath (List.map id_of_string ["Maple";"MapleMode"]) in
+  lazy(make_kn (MPfile dp) (make_dirpath []) (mk_label s))
+
+let maple_reduce ope =
+  apply_tac (maple_tac ope)
+
+let _ = Redexpr.declare_red_expr "simplify" (maple_reduce "red_simplify") in
+let _ = Redexpr.declare_red_expr "factor" (maple_reduce "red_factor") in
+let _ = Redexpr.declare_red_expr "expand" (maple_reduce "red_expand") in
+let _ = Redexpr.declare_red_expr "normal" (maple_reduce "red_normal") in ()
 
 (* Verifies if Maple is available during the ML loading *)
 let _ = is_maple true
