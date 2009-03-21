@@ -41,24 +41,26 @@ COQSRCLIBS:=-I $(COQLIB)/kernel -I $(COQLIB)/lib \
   -I $(COQLIB)/pretyping -I $(COQLIB)/interp \
   -I $(COQLIB)/proofs -I $(COQLIB)/tactics \
   -I $(COQLIB)/toplevel \
-  -I $(COQLIB)/contrib/cc \
-  -I $(COQLIB)/contrib/dp \
-  -I $(COQLIB)/contrib/extraction \
-  -I $(COQLIB)/contrib/field \
-  -I $(COQLIB)/contrib/firstorder \
-  -I $(COQLIB)/contrib/fourier \
-  -I $(COQLIB)/contrib/funind \
-  -I $(COQLIB)/contrib/groebner \
-  -I $(COQLIB)/contrib/interface \
-  -I $(COQLIB)/contrib/micromega \
-  -I $(COQLIB)/contrib/omega \
-  -I $(COQLIB)/contrib/quote \
-  -I $(COQLIB)/contrib/ring \
-  -I $(COQLIB)/contrib/romega \
-  -I $(COQLIB)/contrib/rtauto \
-  -I $(COQLIB)/contrib/setoid_ring \
-  -I $(COQLIB)/contrib/subtac \
-  -I $(COQLIB)/contrib/xml
+  -I $(COQLIB)/plugins/cc \
+  -I $(COQLIB)/plugins/dp \
+  -I $(COQLIB)/plugins/extraction \
+  -I $(COQLIB)/plugins/field \
+  -I $(COQLIB)/plugins/firstorder \
+  -I $(COQLIB)/plugins/fourier \
+  -I $(COQLIB)/plugins/funind \
+  -I $(COQLIB)/plugins/groebner \
+  -I $(COQLIB)/plugins/groebner-new \
+  -I $(COQLIB)/plugins/interface \
+  -I $(COQLIB)/plugins/micromega \
+  -I $(COQLIB)/plugins/omega \
+  -I $(COQLIB)/plugins/quote \
+  -I $(COQLIB)/plugins/ring \
+  -I $(COQLIB)/plugins/romega \
+  -I $(COQLIB)/plugins/rtauto \
+  -I $(COQLIB)/plugins/setoid_ring \
+  -I $(COQLIB)/plugins/subtac \
+  -I $(COQLIB)/plugins/subtac/test \
+  -I $(COQLIB)/plugins/xml
 COQLIBS:= -R . MapleMode
 COQDOCLIBS:=-R . MapleMode
 
@@ -111,7 +113,7 @@ CMXFILES:=$(MLFILES:.ml=.cmx)
 CMXSFILES:=$(MLFILES:.ml=.cmxs)
 OFILES:=$(MLFILES:.ml=.o)
 
-all: $(VOFILES) $(CMOFILES) fake_maple/fake_maple\
+all: $(VOFILES) $(CMOFILES) $(CMXSFILES) fake_maple/fake_maple\
   Maple.vo
 spec: $(VIFILES)
 
@@ -163,13 +165,13 @@ Maple.vo: Maple.v fake_maple/fake_maple
 	$(CAMLC) $(ZDEBUG) $(ZFLAGS) $<
 
 %.cmo: %.ml
-	$(CAMLC) $(ZDEBUG) $(ZFLAGS) -c $(PP) $<
+	$(CAMLC) $(ZDEBUG) $(ZFLAGS) $(PP) $<
 
 %.cmx: %.ml
-	$(CAMLOPTC) $(ZDEBUG) $(ZFLAGS) -c $(PP) $<
+	$(CAMLOPTC) $(ZDEBUG) $(ZFLAGS) $(PP) $<
 
 %.cmxs: %.ml
-	$(CAMLOPTC) $(ZDEBUG) $(ZFLAGS) -shared -o $@ $(PP) $<
+	$(CAMLOPTLINK) $(ZDEBUG) $(ZFLAGS) -shared -o $@ $(PP) $<
 
 %.cmo: %.ml4
 	$(CAMLC) $(ZDEBUG) $(ZFLAGS) $(PP) -impl $<
@@ -178,10 +180,10 @@ Maple.vo: Maple.v fake_maple/fake_maple
 	$(CAMLOPTC) $(ZDEBUG) $(ZFLAGS) $(PP) -impl $<
 
 %.cmxs: %.ml4
-	$(CAMLOPTC) $(ZDEBUG) $(ZFLAGS) -shared -o $@ $(PP) -impl $<
+	$(CAMLOPTLINK) $(ZDEBUG) $(ZFLAGS) -shared -o $@ $(PP) -impl $<
 
 %.ml.d: %.ml
-	$(CAMLBIN)ocamldep -slash $(COQSRCLIBS) $(OCAMLLIBS) $(PP) "$<" > "$@"
+	$(CAMLBIN)ocamldep -slash $(OCAMLLIBS) $(PP) "$<" > "$@"
 
 %.vo %.glob: %.v
 	$(COQC) $(COQDEBUG) $(COQFLAGS) $*
@@ -222,6 +224,9 @@ install:
 	 install -D $$i $(COQLIB)/user-contrib/MapleMode/$$i; \
 	 done)
 	(for i in $(CMIFILES); do \
+	 install -D $$i $(COQLIB)/user-contrib/MapleMode/$$i; \
+	 done)
+	(for i in $(CMXSFILES); do \
 	 install -D $$i $(COQLIB)/user-contrib/MapleMode/$$i; \
 	 done)
 
