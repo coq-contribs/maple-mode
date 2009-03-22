@@ -113,7 +113,7 @@ CMXFILES:=$(MLFILES:.ml=.cmx)
 CMXSFILES:=$(MLFILES:.ml=.cmxs)
 OFILES:=$(MLFILES:.ml=.o)
 
-all: $(VOFILES) $(CMOFILES) $(CMXSFILES) fake_maple/fake_maple\
+all: $(VOFILES) $(CMOFILES) fake_maple/fake_maple\
   Maple.vo
 spec: $(VIFILES)
 
