@@ -16,7 +16,7 @@ which may be in your PATH).
 Compilation and use:
 ===================
 
-    Just type "make" and load the module Maple with "Require Maple.".
+    Just type "make" and load the module Maple with "Require Import Maple.".
 
 Description:
 ===========
@@ -26,28 +26,28 @@ this exports the functions simplify/factor/expand/normal of Maple giving the
 corresponding tactics Simplify/Factor/Expand/Normal. These tactics are
 described as follows:
 
-    o Simplify term_0 ... term_n
+    o simplify term_0 ... term_n
 
     This tactic simplifies the terms term_0 ... term_n (using the function
 simplify of Maple) and replaces them in the conclusion of the current goal by
 the resulting simplified terms. There must be a field theory (see the Reference
 Manual) declared for the type of these terms.
 
-    o Factor term_0 ... term_n
+    o factor term_0 ... term_n
 
     This tactic factorizes the terms term_0 ... term_n (using the function
 factor of Maple) and replaces them in the conclusion of the current goal by
 the resulting factorized terms. There must be a field theory (see the Reference
 Manual) declared for the type of these terms.
 
-    o Expand term_0 ... term_n
+    o expand term_0 ... term_n
 
     This tactic factorizes the terms term_0 ... term_n (using the function
 factor of Maple) and replaces them in the conclusion of the current goal by
 the resulting expanded terms. There must be a field theory (see the Reference
 Manual) declared for the type of these terms.
 
-    o Normal term_0 ... term_n
+    o normal term_0 ... term_n
 
     This tactic factorizes the terms term_0 ... term_n (using the function
 factor of Maple) and replaces them in the conclusion of the current goal by
@@ -58,7 +58,6 @@ Reference Manual) declared for the type of these terms.
     These tactics can be also used as functions by means of the Eval ... In
 command. This can be as a tactic expression or as a function over terms:
 
-    Let ident = Eval <Maple Tactic> in term In ...
     Definition ident ... := Eval <Maple Tactic> in term.
 
 Examples:
@@ -80,14 +79,8 @@ Extensions:
 
     If you want to extend this Maple mode with other functions over
 multivariate polynomials and if these functions accept only one argument (they
-may take other arguments, but as optional arguments), you simply need to edit
-the file Maple.v adding the following line to the first Grammar command:
-
-    | <function> ["<Function>"] -> ["<function>"]
-
-    as well as the following line to the Syntax command:
-
-    | <function> [<<(PrintMaple "<function>")>>] -> ["<Function>"]
+may take other arguments, but as optional arguments), you need to add new
+TACTIC EXTEND commands and new declare_red_expr in the file maple.ml.
 
     If you need to add more complicated functions, please contact the authors.
 
@@ -109,3 +102,6 @@ observed some bugs, please let us know sending us a mail at:
 
     delahaye@cs.chalmers.se
     mayero@cs.chalmers.se
+
+Ported to Coq 8.x by Hugo Herbelin; support for extensions directly
+from the Coq user side still to be done.
