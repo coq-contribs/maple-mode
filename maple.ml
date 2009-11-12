@@ -15,6 +15,7 @@ open Proof_type
 open Tacinterp
 open Tacticals
 open Tacexpr
+open Namegen
 
 (* Returns the version of Maple *)
 let version maple =
