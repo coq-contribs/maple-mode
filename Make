@@ -1,7 +1,7 @@
 -R . MapleMode
 fake_maple
 COQC = "export MAPLE=./fake_maple/fake_maple ; $(COQBIN)coqc -dump-glob $*.glob $(COQDEBUG) $(COQFLAGS)"
+-custom "$(COQC) -dump-glob $*.glob $(COQDEBUG) $(COQFLAGS) Maple.v" "maple.cmo Maple.v fake_maple" "Maple.vo Maple.glob"
 Examples.v
-Maple.v
 maple.ml
 -byte
