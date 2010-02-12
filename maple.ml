@@ -338,10 +338,10 @@ let apply_ope ope env sigma c =
 let maple ope = apply_ope (operation ope)
 
 (* Declare the new reductions (used by "eval" commands and "Eval" constr) *)
-let _ = Redexpr.declare_red_expr "raw_simplify" (maple "simplify") in
-let _ = Redexpr.declare_red_expr "raw_factor" (maple "factor") in
-let _ = Redexpr.declare_red_expr "raw_expand" (maple "expand") in
-let _ = Redexpr.declare_red_expr "raw_normal" (maple "normal") in ()
+let _ = Redexpr.declare_reduction "raw_simplify" (maple "simplify") in
+let _ = Redexpr.declare_reduction "raw_factor" (maple "factor") in
+let _ = Redexpr.declare_reduction "raw_expand" (maple "expand") in
+let _ = Redexpr.declare_reduction "raw_normal" (maple "normal") in ()
 
 (* Iterates the tactic over the term list *)
 let tac_iter tac lcr =
@@ -381,7 +381,7 @@ let apply_tac tac =
 
 (*
 let declare_redexpr id tac =
-  Redexpr.declare_red_expr id (apply_tac tac)
+  Redexpr.declare_reduction id (apply_tac tac)
 
 VERNAC COMMAND EXTEND NewRed
   | [ "Add" "Reduction" ident(id) ":=" tactic(tac) ] ->
@@ -395,10 +395,10 @@ let maple_tac s =
 let maple_reduce ope =
   apply_tac (maple_tac ope)
 
-let _ = Redexpr.declare_red_expr "simplify" (maple_reduce "red_simplify") in
-let _ = Redexpr.declare_red_expr "factor" (maple_reduce "red_factor") in
-let _ = Redexpr.declare_red_expr "expand" (maple_reduce "red_expand") in
-let _ = Redexpr.declare_red_expr "normal" (maple_reduce "red_normal") in ()
+let _ = Redexpr.declare_reduction "simplify" (maple_reduce "red_simplify") in
+let _ = Redexpr.declare_reduction "factor" (maple_reduce "red_factor") in
+let _ = Redexpr.declare_reduction "expand" (maple_reduce "red_expand") in
+let _ = Redexpr.declare_reduction "normal" (maple_reduce "red_normal") in ()
 
 (* Verifies if Maple is available during the ML loading *)
 let _ = is_maple true
