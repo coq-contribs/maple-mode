@@ -371,7 +371,7 @@ let red_of_tac tac c g =
 (*  let tac = ltac_letin ("F", Tacexp tac) (ltac_lcall "F" [carg c]) in*)
   let tac = Newring.ltac_call tac [Newring.carg c] in
   match val_interp ist g tac with
-    | VConstr c -> c
+    | VConstr ([],c) -> c
     | VRTactic res -> constr_from_goal res
     | v ->
 	constr_from_goal (interp (Tacexpr.TacArg(valueIn v)) g)
