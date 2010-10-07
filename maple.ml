@@ -330,8 +330,8 @@ let name_rels env c =
 
 let apply_ope ope env sigma c =
   let (env,vars,c) = name_rels env c in
-  let g =
-    Proof_trees.mk_goal (named_context_val env) (*Dummy goal*) mkProp None in
+  let g, _, sigma =
+    Goal.V82.mk_goal sigma (named_context_val env) (*Dummy goal*) mkProp Store.empty in
   let g = { Evd.it=g; Evd.sigma=sigma } in
   subst_vars vars (ope c g)
 
@@ -350,12 +350,13 @@ let tac_iter tac lcr =
 
 TACTIC EXTEND maple_fun_simplify
 | [ "tac_iter" tactic0(tac) ne_constr_list(cl) ] ->
-     [ tac_iter (fun c -> Newring.ltac_apply (fst tac) [Newring.carg c]) cl ]
+     [ tac_iter (fun c -> Newring.ltac_apply tac [Newring.carg c]) cl ]
 END
 
-let constr_from_goal (gls,_) =
+let constr_from_goal gls =
   match gls.Evd.it with
-      [{Evd.evar_concl=g}] ->
+      [concl] ->
+        let g = Goal.V82.concl gls.Evd.sigma concl in
 	(match kind_of_term g with
 	     Prod(_,eq,_) ->
 	       (match kind_of_term eq with
