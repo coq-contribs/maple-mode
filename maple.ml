@@ -112,7 +112,7 @@ let path_z =  make_dirpath (List.map id_of_string
 let path_n =  make_dirpath (List.map id_of_string
     (List.rev ["Coq";"NArith";"BinNat"]))
 let path_pos =  make_dirpath (List.map id_of_string
-    (List.rev ["Coq";"NArith";"BinPos"]))
+    (List.rev ["Coq";"PArith";"BinPos"]))
 
 let zcoq = constr_from path_z "Z"
 let z0   = constr_from path_z "Z0"
