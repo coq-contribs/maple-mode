@@ -107,22 +107,18 @@ let path_nat =  make_dirpath (List.map id_of_string
 let eO = constr_from path_nat "O"
 let eS = constr_from path_nat "S";;
 
-let path_z =  make_dirpath (List.map id_of_string
-    (List.rev ["Coq";"ZArith";"BinInt"]))
-let path_n =  make_dirpath (List.map id_of_string
-    (List.rev ["Coq";"NArith";"BinNat"]))
-let path_pos =  make_dirpath (List.map id_of_string
-    (List.rev ["Coq";"PArith";"BinPos"]))
+let path_bin =  make_dirpath (List.map id_of_string
+    (List.rev ["Coq";"Numbers";"BinNums"]))
 
-let zcoq = constr_from path_z "Z"
-let z0   = constr_from path_z "Z0"
-let zpos = constr_from path_z "Zpos"
-let zneg = constr_from path_z "Zneg"
-let xH   = constr_from path_pos "xH"
-let xI   = constr_from path_pos "xI"
-let xO   = constr_from path_pos "xO"
-let n0   = constr_from path_n "N0"
-let npos = constr_from path_n "Npos"
+let zcoq = constr_from path_bin "Z"
+let z0   = constr_from path_bin "Z0"
+let zpos = constr_from path_bin "Zpos"
+let zneg = constr_from path_bin "Zneg"
+let xH   = constr_from path_bin "xH"
+let xI   = constr_from path_bin "xI"
+let xO   = constr_from path_bin "xO"
+let n0   = constr_from path_bin "N0"
+let npos = constr_from path_bin "Npos"
 
 
 (* Generic transformers between various flavours of numbers *)
