@@ -371,7 +371,7 @@ let red_of_tac tac c g =
     | VConstr ([],c) -> c
     | VRTactic res -> constr_from_goal res
     | v ->
-	constr_from_goal (interp (Tacexpr.TacArg(valueIn v)) g)
+	constr_from_goal (interp (Tacexpr.TacArg(dummy_loc,valueIn v)) g)
 
 let apply_tac tac =
   apply_ope (red_of_tac tac)
