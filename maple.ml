@@ -1,7 +1,7 @@
 (* maple.ml4 *)
 
-open Util
 open Pp
+open Errors
 open Flags
 
 open Names
