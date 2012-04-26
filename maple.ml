@@ -368,10 +368,10 @@ let red_of_tac tac c g =
 (*  let tac = ltac_letin ("F", Tacexp tac) (ltac_lcall "F" [carg c]) in*)
   let tac = Newring.ltac_call tac [Newring.carg c] in
   match val_interp ist g tac with
-    | VConstr ([],c) -> c
-    | VRTactic res -> constr_from_goal res
-    | v ->
+    | sigma, (VFun _ as v) ->
+        let g = { g with Evd.sigma=sigma } in
 	constr_from_goal (interp (Tacexpr.TacArg(dummy_loc,valueIn v)) g)
+    | _ -> assert false
 
 let apply_tac tac =
   apply_ope (red_of_tac tac)
