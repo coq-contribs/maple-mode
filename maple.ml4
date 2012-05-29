@@ -11,6 +11,7 @@ open Termops
 open Environ
 open Reductionops
 open Libnames
+open Globnames
 open Proof_type
 open Tacinterp
 open Tacticals
@@ -151,7 +152,7 @@ let mk_N =
    xH, (fun x->mkApp(xO,[|x|])), (fun x->mkApp(xI,[|x|])))
 
 let mk_Z =
-  (z0, (fun x->mkApp(zpos,[|x|])), (fun x->mkApp(zneg,[|x|])), 
+  (z0, (fun x->mkApp(zpos,[|x|])), (fun x->mkApp(zneg,[|x|])),
    xH, (fun x->mkApp(xO,[|x|])), (fun x->mkApp(xI,[|x|])))
 
 let dest_int =
@@ -159,7 +160,7 @@ let dest_int =
       if n=0 then Z0
       else if n<0 then Zneg n
       else Zpos n),
-   (fun n -> 
+   (fun n ->
       if n=1 then P1
       else if n mod 2 = 1 then PI (n/2) else PO (n/2)))
 
@@ -168,7 +169,7 @@ let dest_bigint =
       if n=Bigint.zero then Z0
       else if Bigint.is_strictly_neg n then Zneg n
       else Zpos n),
-   (fun n -> 
+   (fun n ->
       if n=Bigint.one then P1
       else
 	let (q,r) = Bigint.div2_with_rest n in
