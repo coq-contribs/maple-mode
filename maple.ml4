@@ -371,7 +371,7 @@ let red_of_tac tac c g =
   match val_interp ist g tac with
     | sigma, (VFun _ as v) ->
         let g = { g with Evd.sigma=sigma } in
-	constr_from_goal (interp (Tacexpr.TacArg(dummy_loc,valueIn v)) g)
+	constr_from_goal (interp (Tacexpr.TacArg(Loc.ghost,valueIn v)) g)
     | _ -> assert false
 
 let apply_tac tac =
