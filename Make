@@ -4,6 +4,6 @@ COQC = "export MAPLE=./fake_maple/fake_maple ; $(COQBIN)coqc"
 Examples.v
 Maple.v
 maple.ml4
-fake_maple/fake_maple.ml4
+fake_maple/fake_maple.ml
 -custom "$(CAMLLINK) -o $@ str.cma $<" "fake_maple/fake_maple.cmo" "fake_maple/fake_maple"
 -custom "$(COQC) $(COQDEBUG) $(COQFLAGS) $<" "Maple.v fake_maple/fake_maple" "Maple.vo"
