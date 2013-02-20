@@ -297,9 +297,7 @@ let maple_call exe =
     let maple = is_maple false in
     let _ = Sys.command ("echo \""^ins^"\" | "^maple^" -q") in ();
     let inc = open_in tmp in
-    let exp =
-      try Grammar.Entry.parse mexpr_s (Stream.of_channel inc)
-      with Loc.Exc_located (_,e) -> raise e in
+    let exp = Grammar.Entry.parse mexpr_s (Stream.of_channel inc) in
     begin
       close_in inc;
       Sys.remove tmp;
