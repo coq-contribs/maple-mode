@@ -326,7 +326,8 @@ let name_rels env c =
 let apply_ope ope env sigma c =
   let (env,vars,c) = name_rels env c in
   let g, _, sigma =
-    Goal.V82.mk_goal sigma (named_context_val env) (*Dummy goal*) mkProp Store.empty in
+    Goal.V82.mk_goal sigma (named_context_val env) (*Dummy goal*)
+      mkProp Evd.Store.empty in
   let g = { Evd.it=g; Evd.sigma=sigma } in
   subst_vars vars (ope c g)
 
