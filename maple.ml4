@@ -298,7 +298,7 @@ let maple_call exe =
     let inc = open_in tmp in
     let exp =
       try Grammar.Entry.parse mexpr_s (Stream.of_channel inc)
-      with Stdpp.Exc_located (_,e) -> raise e in
+      with Compat.Loc.Exc_located (_,e) -> raise e in
     begin
       close_in inc;
       Sys.remove tmp;
