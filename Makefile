@@ -84,8 +84,7 @@ PP:=-pp "$(CAMLP4BIN)$(CAMLP4)o -I . $(COQSRCLIBS) $(CAMLP4EXTEND) $(GRAMMARS) $
 #                                 #
 ###################################
 
-VFILES:=Examples.v\
-  Maple.v
+VFILES:=Examples.v
 VOFILES:=$(VFILES:.v=.vo)
 GLOBFILES:=$(VFILES:.v=.glob)
 VIFILES:=$(VFILES:.v=.vi)
@@ -99,7 +98,8 @@ CMXFILES:=$(MLFILES:.ml=.cmx)
 CMXSFILES:=$(MLFILES:.ml=.cmxs)
 OFILES:=$(MLFILES:.ml=.o)
 
-all: $(VOFILES) $(CMOFILES) $(CMXSFILES) fake_maple
+all: $(VOFILES) $(CMOFILES) $(CMXSFILES) Maple.vo Maple.glob\
+  fake_maple
 spec: $(VIFILES)
 
 gallina: $(GFILES)
@@ -125,6 +125,15 @@ all-gal.pdf: $(VFILES)
 	$(COQDOC) -toc -pdf -g $(COQDOCLIBS) -o $@ `$(COQDEP) -sort -suffix .v $(VFILES)`
 
 
+
+###################
+#                 #
+# Custom targets. #
+#                 #
+###################
+
+Maple.vo Maple.glob: maple.cmo Maple.v fake_maple
+	$(COQC) -dump-glob $*.glob $(COQDEBUG) $(COQFLAGS) Maple.v
 
 ###################
 #                 #
@@ -200,16 +209,20 @@ opt:
 install:
 	mkdir -p $(COQLIB)/user-contrib
 	(for i in $(VOFILES); do \
-	 install -D $$i $(COQLIB)/user-contrib/MapleMode/$$i; \
+	 install -d `dirname $(COQLIB)/user-contrib/MapleMode/$$i`; \
+	 install $$i $(COQLIB)/user-contrib/MapleMode/$$i; \
 	 done)
 	(for i in $(CMOFILES); do \
-	 install -D $$i $(COQLIB)/user-contrib/MapleMode/$$i; \
+	 install -d `dirname $(COQLIB)/user-contrib/MapleMode/$$i`; \
+	 install $$i $(COQLIB)/user-contrib/MapleMode/$$i; \
 	 done)
 	(for i in $(CMIFILES); do \
-	 install -D $$i $(COQLIB)/user-contrib/MapleMode/$$i; \
+	 install -d `dirname $(COQLIB)/user-contrib/MapleMode/$$i`; \
+	 install $$i $(COQLIB)/user-contrib/MapleMode/$$i; \
 	 done)
 	(for i in $(CMXSFILES); do \
-	 install -D $$i $(COQLIB)/user-contrib/MapleMode/$$i; \
+	 install -d `dirname $(COQLIB)/user-contrib/MapleMode/$$i`; \
+	 install $$i $(COQLIB)/user-contrib/MapleMode/$$i; \
 	 done)
 	(cd fake_maple; $(MAKE) INSTALLDEFAULTROOT=$(INSTALLDEFAULTROOT)/fake_maple install)
 
@@ -219,6 +232,7 @@ clean:
 	rm -f $(CMOFILES) $(MLFILES:.ml=.cmi) $(MLFILES:.ml=.ml.d) $(MLFILES:.ml=.cmx) $(MLFILES:.ml=.o)
 	rm -f $(CMXSFILES) $(CMXSFILES:.cmxs=.o)
 	- rm -rf html
+	- rm -f Maple.vo Maple.glob
 	(cd fake_maple ; $(MAKE) clean)
 
 archclean:
