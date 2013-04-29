@@ -7,6 +7,7 @@ open Flags
 open Names
 open Nameops
 open Term
+open Vars
 open Termops
 open Environ
 open Reductionops
