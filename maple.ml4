@@ -363,7 +363,7 @@ let constr_from_goal gls =
     | _ -> failwith "ill-formed goal"
 
 let red_of_tac tac c g =
-  let ist = { lfun = []; extra = TacStore.empty } in
+  let ist = { lfun = Id.Map.empty; extra = TacStore.empty } in
 (*  let tac = ltac_letin ("F", Tacexp tac) (ltac_lcall "F" [carg c]) in*)
   let tac = Newring.ltac_call tac [Newring.carg c] in
   let (sigma, v) = val_interp ist g tac in
