@@ -329,7 +329,7 @@ let apply_ope ope env sigma c =
   let g, _, sigma =
     Goal.V82.mk_goal sigma (named_context_val env) (*Dummy goal*)
       mkProp Evd.Store.empty in
-  let g = { Evd.it=g; Evd.sigma=sigma } in
+  let g = { Evd.it=g; Evd.sigma=sigma; Evd.eff = Declareops.no_seff } in
   subst_vars vars (ope c g)
 
 let maple ope = apply_ope (operation ope)
