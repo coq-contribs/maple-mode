@@ -347,7 +347,7 @@ let tac_iter tac lcr =
 
 TACTIC EXTEND maple_fun_simplify
 | [ "tac_iter" tactic0(tac) ne_constr_list(cl) ] ->
-     [ tac_iter (fun c -> Newring.ltac_apply tac [Newring.carg c]) cl ]
+     [ Proofview.V82.tactic (tac_iter (fun c -> Proofview.V82.of_tactic (Newring.ltac_apply tac [Newring.carg c])) cl) ]
 END
 
 let constr_from_goal gls =
@@ -366,9 +366,11 @@ let red_of_tac tac c g =
   let ist = { lfun = Id.Map.empty; extra = TacStore.empty } in
 (*  let tac = ltac_letin ("F", Tacexp tac) (ltac_lcall "F" [carg c]) in*)
   let tac = Newring.ltac_call tac [Newring.carg c] in
-  let (sigma, v) = val_interp ist g tac in
-  let g = { g with Evd.sigma=sigma } in
-  constr_from_goal (interp (Tacexpr.TacArg(Loc.ghost,valueIn v)) g)
+  let tac =
+    Proofview.Notations.(>>=) (val_interp ist tac) (fun v ->
+    interp (Tacexpr.TacArg(Loc.ghost,valueIn v)))
+  in
+  constr_from_goal (Proofview.V82.of_tactic tac g)
 
 let apply_tac tac =
   apply_ope (red_of_tac tac)
