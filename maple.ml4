@@ -38,7 +38,7 @@ let version maple =
 (* Prints the Coq-Maple logo *)
 let print_logo maple =
   let ver =
-    if Filename.basename maple = "fake_maple" then "fake_maple"
+    if CString.equal (Filename.basename maple) "fake_maple" then "fake_maple"
     else version maple in
   begin
     print_endline ("\nCoq is now powered by Maple ["^ver^"]\n");
@@ -167,11 +167,11 @@ let dest_int =
 
 let dest_bigint =
   ((fun n ->
-      if n=Bigint.zero then Z0
+      if Bigint.equal n Bigint.zero then Z0
       else if Bigint.is_strictly_neg n then Zneg n
       else Zpos n),
    (fun n ->
-      if n=Bigint.one then P1
+      if Bigint.equal n Bigint.one then P1
       else
 	let (q,r) = Bigint.div2_with_rest n in
 	if r then PI q else PO q))
@@ -182,31 +182,31 @@ let dest_pos =
   ((fun p -> Zpos p),
    (fun p ->
       let p = whd_all p in
-      if p=xH then P1 else
+      if Constr.equal p xH then P1 else
 	match kind_of_term p with
 	    App(h,[|q|]) ->
-	      if h=xO then PO q
-	      else if h=xI then PI q
+	      if Constr.equal h xO then PO q
+	      else if Constr.equal h xI then PI q
 	      else failwith "not a ground positive"
 	  | _ -> failwith "not a ground positive"))
 
 let dest_N =
   ((fun n ->
       let n = whd_all n in
-      if n=n0 then Z0 else
+      if Constr.equal n n0 then Z0 else
 	match kind_of_term n with
-	    App(h,[|q|]) when h=npos -> Zpos q
+	    App(h,[|q|]) when Constr.equal h npos -> Zpos q
 	  | _ -> failwith "not a ground N natural"),
    snd dest_pos)
 
 let dest_Z =
   ((fun n ->
       let n = whd_all n in
-      if n=z0 then Z0 else
+      if Constr.equal n z0 then Z0 else
 	match kind_of_term n with
 	    App(h,[|q|]) ->
-	      if h=zpos then Zpos q
-	      else if h=zneg then Zneg q
+	      if Constr.equal h zpos then Zpos q
+	      else if Constr.equal h zneg then Zneg q
 	      else failwith "not a ground Z number"
 	  | _ -> failwith "not a ground Z number"),
    snd dest_pos)
@@ -215,7 +215,7 @@ let dest_Z =
 let rec expra_to_expr csr =
   match kind_of_term csr with
   | App(c,[|_;t1;t2|]) ->
-      let op = List.assoc c
+      let op = CList.assoc_f Constr.equal c
 	[fadd,(fun () -> Add(expra_to_expr t1, expra_to_expr t2));
 	 fsub,(fun () -> Add(expra_to_expr t1, Opp(expra_to_expr t2)));
 	 fmul,(fun () -> Mul(expra_to_expr t1, expra_to_expr t2));
@@ -223,7 +223,7 @@ let rec expra_to_expr csr =
 	 fpow,(fun () -> Pow(expra_to_expr t1, bin_trans dest_N mk_int t2))] in
       op()
   | App(c,[|_;t|]) ->
-      let op = List.assoc c
+      let op = CList.assoc_f Constr.equal  c
 	[fopp,(fun () -> Opp(expra_to_expr t));
 	 finv,(fun () -> Inv(expra_to_expr t));
 	 fvar,(fun () -> Var(bin_trans dest_pos mk_int t));
