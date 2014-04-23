@@ -7,6 +7,15 @@ Declare ML Module "maple".
    raw_expand and raw_normal (transformations operating on syntactic
    field expressions). *)
 
+Ltac prove_rw ope x :=
+  prove_with_field ope x;
+  [ let H := fresh "Heq_maple" in
+    intro H; simpl in H;
+    (** Small hack: rewrite sometimes does not find the term after simpl *)
+    match type of H with ?P ?a ?b => change (P x b) in H end;
+    rewrite H; clear H
+  |..].
+
 Ltac maple_simplify x := (eval raw_simplify in x).
 Tactic Notation "simplify" ne_constr_list(l) :=
   tac_iter (prove_rw maple_simplify) l.

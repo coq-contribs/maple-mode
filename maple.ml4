@@ -93,6 +93,8 @@ let path_field_theory =
   make_dirpath (List.map id_of_string
     (List.rev ["Coq";"setoid_ring";"Field_theory"]))
 
+let fcs0 = constr_from path_field_theory "FEO"
+let fcs1 = constr_from path_field_theory "FEI"
 let fcst = constr_from path_field_theory "FEc"
 let fadd = constr_from path_field_theory "FEadd"
 let fsub = constr_from path_field_theory "FEsub"
@@ -229,7 +231,13 @@ let rec expra_to_expr csr =
 	 fvar,(fun () -> Var(bin_trans dest_pos mk_int t));
 	 fcst,(fun () -> Cst(bin_trans dest_Z mk_bigint t))] in
       op()
-  | _ -> raise Not_found
+  | App(c, [|_|]) ->
+    let op = CList.assoc_f Constr.equal c
+    [fcs0,(fun () -> Cst Bigint.zero);
+     fcs1,(fun () -> Cst Bigint.one)] in
+    op()
+  | _ ->
+    raise Not_found
 
 let expra_to_expr c =
   try expra_to_expr c
