@@ -85,7 +85,7 @@ type expr =
 let constr_from dir s =
   let id = id_of_string s in
   try
-    constr_of_reference (Nametab.global_of_path (make_path dir id))
+    Universes.constr_of_reference (Nametab.global_of_path (make_path dir id))
   with Not_found -> anomaly (Pp.str ("Could not find '"^s^"'."))
 
 (* Builds the constants of the Field reflexion structure *)
