@@ -149,7 +149,7 @@ Proof.
   let t := eval simplify in (x / x + y / y) in
   replace (x / x + y / y)%R with t.
   reflexivity.
-  field; auto.
+  cbn; field; auto.
 Qed.
 
 Lemma eval_fact0 : x <> 0 -> y <> 0 -> x / x + x / y = (x + y) / y.
@@ -158,7 +158,7 @@ Proof.
   let t := eval factor in (x / x + x / y) in
   replace (x / x + x / y) with t.
   rewrite Rplus_comm; reflexivity.
-  field; auto.
+  cbn; field; auto.
 Qed.
 
 Lemma eval_expd0 :
@@ -168,7 +168,7 @@ Proof.
   let t := eval expand in ((3*x+3)*(y-5/3)) in
   replace ((3*x+3)*(y-5/3)) with t.
   reflexivity.
-  field.
+  cbn; field.
 Save.
 
 Lemma eval_norm0 : x <> 0 -> y <> 0 -> y / (x * y) + y / x = (1 + y) / x.
@@ -177,7 +177,7 @@ Proof.
   let t := eval normal in (y / (x * y) + y / x) in
   replace (y / (x * y) + y / x) with t.
   unfold Rdiv in |- *; reflexivity.
-  field; auto.
+  cbn; field; auto.
 Qed.
 
 Definition def0 := Eval simplify in 1 / 1.

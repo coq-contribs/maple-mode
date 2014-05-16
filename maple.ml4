@@ -19,6 +19,8 @@ open Tacticals
 open Tacexpr
 open Namegen
 
+DECLARE PLUGIN "maple"
+
 (* Returns the version of Maple *)
 let version maple =
   let tmp = Filename.temp_file "maple" "version" in
