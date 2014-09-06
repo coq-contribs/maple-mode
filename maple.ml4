@@ -377,7 +377,7 @@ let red_of_tac tac c g =
 (*  let tac = ltac_letin ("F", Tacexp tac) (ltac_lcall "F" [carg c]) in*)
   let tac = Newring.ltac_call tac [Newring.carg c] in
   let tac =
-    Proofview.Goal.enter begin fun gl ->
+    Proofview.Goal.nf_enter begin fun gl ->
       (val_interp ist tac) (fun v ->
       interp (Tacexpr.TacArg(Loc.ghost,valueIn v)))
     end
