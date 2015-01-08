@@ -84,17 +84,23 @@ COQSRCLIBS?=-I "$(COQLIB)kernel" -I "$(COQLIB)lib" \
   -I "$(COQLIB)/plugins/btauto" \
   -I "$(COQLIB)/plugins/cc" \
   -I "$(COQLIB)/plugins/decl_mode" \
+  -I "$(COQLIB)/plugins/dp" \
   -I "$(COQLIB)/plugins/extraction" \
+  -I "$(COQLIB)/plugins/field" \
   -I "$(COQLIB)/plugins/firstorder" \
   -I "$(COQLIB)/plugins/fourier" \
   -I "$(COQLIB)/plugins/funind" \
+  -I "$(COQLIB)/plugins/groebner" \
+  -I "$(COQLIB)/plugins/interface" \
   -I "$(COQLIB)/plugins/micromega" \
   -I "$(COQLIB)/plugins/nsatz" \
   -I "$(COQLIB)/plugins/omega" \
   -I "$(COQLIB)/plugins/quote" \
+  -I "$(COQLIB)/plugins/ring" \
   -I "$(COQLIB)/plugins/romega" \
   -I "$(COQLIB)/plugins/rtauto" \
   -I "$(COQLIB)/plugins/setoid_ring" \
+  -I "$(COQLIB)/plugins/subtac" \
   -I "$(COQLIB)/plugins/syntax" \
   -I "$(COQLIB)/plugins/xml"
 ZFLAGS=$(OCAMLLIBS) $(COQSRCLIBS) -I $(CAMLP4LIB)
@@ -146,17 +152,13 @@ GLOBFILES:=$(VFILES:.v=.glob)
 GFILES:=$(VFILES:.v=.g)
 HTMLFILES:=$(VFILES:.v=.html)
 GHTMLFILES:=$(VFILES:.v=.g.html)
-ML4FILES:=maple.ml4
+ML4FILES:=fake_maple/fake_maple.ml4\
+  maple.ml4
 
 -include $(addsuffix .d,$(ML4FILES))
 .SECONDARY: $(addsuffix .d,$(ML4FILES))
 
-MLFILES:=fake_maple/fake_maple.ml
-
--include $(addsuffix .d,$(MLFILES))
-.SECONDARY: $(addsuffix .d,$(MLFILES))
-
-ALLCMOFILES:=$(ML4FILES:.ml4=.cmo) $(MLFILES:.ml=.cmo)
+ALLCMOFILES:=$(ML4FILES:.ml4=.cmo)
 CMOFILES=$(filter-out $(addsuffix .cmo,$(foreach lib,$(MLLIBFILES:.mllib=_MLLIB_DEPENDENCIES) $(MLPACKFILES:.mlpack=_MLPACK_DEPENDENCIES),$($(lib)))),$(ALLCMOFILES))
 CMXFILES=$(CMOFILES:.cmo=.cmx)
 OFILES=$(CMXFILES:.cmx=.o)
@@ -177,12 +179,12 @@ endif
 all: $(VOFILES) $(CMOFILES) $(if $(HASNATDYNLINK_OR_EMPTY),$(CMXSFILES)) Maple.vo\
   fake_maple/fake_maple
 
-quick:
-	$(MAKE) -f $(firstword $(MAKEFILE_LIST)) all VO=vi
-vi2vo:
-	$(COQC) $(COQDEBUG) $(COQFLAGS) -schedule-vi2vo $(J) $(VOFILES:%.vo=%.vi)
+quick: $(VOFILES:.vo=.vio)
+
+vio2vo:
+	$(COQC) $(COQDEBUG) $(COQFLAGS) -schedule-vio2vo $(J) $(VOFILES:%.vo=%.vio)
 checkproofs:
-	$(COQC) $(COQDEBUG) $(COQFLAGS) -schedule-vi-checking $(J) $(VOFILES:%.vo=%.vi)
+	$(COQC) $(COQDEBUG) $(COQFLAGS) -schedule-vio-checking $(J) $(VOFILES:%.vo=%.vio)
 gallina: $(GFILES)
 
 html: $(GLOBFILES) $(VFILES)
@@ -280,7 +282,7 @@ clean:
 	rm -f $(ALLCMOFILES) $(CMIFILES) $(CMAFILES)
 	rm -f $(ALLCMOFILES:.cmo=.cmx) $(CMXAFILES) $(CMXSFILES) $(ALLCMOFILES:.cmo=.o) $(CMXAFILES:.cmxa=.a)
 	rm -f $(addsuffix .d,$(MLFILES) $(MLIFILES) $(ML4FILES) $(MLLIBFILES) $(MLPACKFILES))
-	rm -f $(VOFILES) $(VOFILES:.vo=.vi) $(GFILES) $(VFILES:.v=.v.d) $(VFILES:=.beautified) $(VFILES:=.old)
+	rm -f $(VOFILES) $(VOFILES:.vo=.vio) $(GFILES) $(VFILES:.v=.v.d) $(VFILES:=.beautified) $(VFILES:=.old)
 	rm -f all.ps all-gal.ps all.pdf all-gal.pdf all.glob $(VFILES:.v=.glob) $(VFILES:.v=.tex) $(VFILES:.v=.g.tex) all-mli.tex
 	- rm -rf html mlihtml uninstall_me.sh
 	- rm -rf Maple.vo
@@ -318,15 +320,6 @@ $(filter-out $(addsuffix .cmx,$(foreach lib,$(MLPACKFILES:.mlpack=_MLPACK_DEPEND
 $(addsuffix .d,$(ML4FILES)): %.ml4.d: %.ml4
 	$(COQDEP) $(OCAMLLIBS) "$<" > "$@" || ( RV=$$?; rm -f "$@"; exit $${RV} )
 
-$(MLFILES:.ml=.cmo): %.cmo: %.ml
-	$(CAMLC) $(ZDEBUG) $(ZFLAGS) $<
-
-$(filter-out $(addsuffix .cmx,$(foreach lib,$(MLPACKFILES:.mlpack=_MLPACK_DEPENDENCIES),$($(lib)))),$(MLFILES:.ml=.cmx)): %.cmx: %.ml
-	$(CAMLOPTC) $(ZDEBUG) $(ZFLAGS) $<
-
-$(addsuffix .d,$(MLFILES)): %.ml.d: %.ml
-	$(OCAMLDEP) -slash $(OCAMLLIBS) "$<" > "$@" || ( RV=$$?; rm -f "$@"; exit $${RV} )
-
 $(filter-out $(MLLIBFILES:.mllib=.cmxs),$(MLFILES:.ml=.cmxs) $(ML4FILES:.ml4=.cmxs) $(MLPACKFILES:.mlpack=.cmxs)): %.cmxs: %.cmx
 	$(CAMLOPTLINK) $(ZDEBUG) $(ZFLAGS) -shared -o $@ $<
 
@@ -339,7 +332,7 @@ $(VOFILES): %.vo: %.v
 $(GLOBFILES): %.glob: %.v
 	$(COQC) $(COQDEBUG) $(COQFLAGS) $*
 
-$(VFILES:.v=.vi): %.vi: %.v
+$(VFILES:.v=.vio): %.vio: %.v
 	$(COQC) -quick $(COQDEBUG) $(COQFLAGS) $*
 
 $(GFILES): %.g: %.v
