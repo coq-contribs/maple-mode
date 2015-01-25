@@ -354,10 +354,24 @@ let _ = Redexpr.declare_reduction "raw_normal" (maple "normal") in ()
 let tac_iter tac lcr =
   List.fold_right (fun c a -> tclTHENFIRST (tac c) a) lcr tclIDTAC
 
+let ltac_call tac (args:glob_tactic_arg list) =
+  TacArg(Loc.ghost,TacCall(Loc.ghost, Misctypes.ArgArg(Loc.ghost, Lazy.force tac),args))
+
+let ltac_lcall tac args =
+  TacArg(Loc.ghost,TacCall(Loc.ghost, Misctypes.ArgVar(Loc.ghost, Id.of_string tac),args))
+
+let ltac_letin (x, e1) e2 =
+  TacLetIn(false,[(Loc.ghost,Id.of_string x),e1],e2)
+
+let ltac_apply (f:glob_tactic_expr) (args:glob_tactic_arg list) =
+  Tacinterp.eval_tactic
+    (ltac_letin ("F", Tacexp f) (ltac_lcall "F" args))
+
+let carg c = TacDynamic(Loc.ghost,Pretyping.constr_in c)
 
 TACTIC EXTEND maple_fun_simplify
 | [ "tac_iter" tactic0(tac) ne_constr_list(cl) ] ->
-     [ Proofview.V82.tactic (tac_iter (fun c -> Proofview.V82.of_tactic (Newring.ltac_apply tac [Newring.carg c])) cl) ]
+     [ Proofview.V82.tactic (tac_iter (fun c -> Proofview.V82.of_tactic (ltac_apply tac [carg c])) cl) ]
 END
 
 let constr_from_goal gls =
@@ -375,7 +389,7 @@ let constr_from_goal gls =
 let red_of_tac tac c g =
   let ist = { lfun = Id.Map.empty; extra = TacStore.empty } in
 (*  let tac = ltac_letin ("F", Tacexp tac) (ltac_lcall "F" [carg c]) in*)
-  let tac = Newring.ltac_call tac [Newring.carg c] in
+  let tac = ltac_call tac [carg c] in
   let tac =
     Proofview.Goal.nf_enter begin fun gl ->
       (val_interp ist tac) (fun v ->
