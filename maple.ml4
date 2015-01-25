@@ -363,15 +363,18 @@ let ltac_lcall tac args =
 let ltac_letin (x, e1) e2 =
   TacLetIn(false,[(Loc.ghost,Id.of_string x),e1],e2)
 
-let ltac_apply (f:glob_tactic_expr) (args:glob_tactic_arg list) =
-  Tacinterp.eval_tactic
-    (ltac_letin ("F", Tacexp f) (ltac_lcall "F" args))
-
-let carg c = TacDynamic(Loc.ghost,Pretyping.constr_in c)
+let ltac_apply (f:glob_tactic_expr) (arg:constr) =
+  let ist = Tacinterp.default_ist () in
+  let id = Id.of_string "X" in
+  let arg = Tacinterp.Value.of_constr arg in
+  let ist = { ist with Tacinterp.lfun = Id.Map.add id arg ist.lfun } in
+  let arg = Reference (Misctypes.ArgVar (Loc.ghost, id)) in
+  Tacinterp.eval_tactic_ist ist
+    (ltac_letin ("F", Tacexp f) (ltac_lcall "F" [arg]))
 
 TACTIC EXTEND maple_fun_simplify
 | [ "tac_iter" tactic0(tac) ne_constr_list(cl) ] ->
-     [ Proofview.V82.tactic (tac_iter (fun c -> Proofview.V82.of_tactic (ltac_apply tac [carg c])) cl) ]
+     [ Proofview.V82.tactic (tac_iter (fun c -> Proofview.V82.of_tactic (ltac_apply tac c)) cl) ]
 END
 
 let constr_from_goal gls =
@@ -387,9 +390,12 @@ let constr_from_goal gls =
     | _ -> failwith "ill-formed goal"
 
 let red_of_tac tac c g =
-  let ist = { lfun = Id.Map.empty; extra = TacStore.empty } in
+  let id = Id.of_string "X" in
+  let arg = Tacinterp.Value.of_constr c in
+  let ist = { lfun = Id.Map.singleton id arg; extra = TacStore.empty } in
 (*  let tac = ltac_letin ("F", Tacexp tac) (ltac_lcall "F" [carg c]) in*)
-  let tac = ltac_call tac [carg c] in
+  let arg = Reference (Misctypes.ArgVar (Loc.ghost, id)) in
+  let tac = ltac_call tac [arg] in
   let tac =
     Proofview.Goal.nf_enter begin fun gl ->
       (val_interp ist tac) (fun v ->
