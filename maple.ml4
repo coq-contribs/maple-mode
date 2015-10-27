@@ -18,6 +18,7 @@ open Tacinterp
 open Tacticals
 open Tacexpr
 open Namegen
+open Proofview.Notations
 
 DECLARE PLUGIN "maple"
 
@@ -397,10 +398,10 @@ let red_of_tac tac c g =
   let arg = Reference (Misctypes.ArgVar (Loc.ghost, id)) in
   let tac = ltac_call tac [arg] in
   let tac =
-    Proofview.Goal.nf_enter begin fun gl ->
+    Proofview.Goal.nf_enter { enter = begin fun gl ->
       (val_interp ist tac) (fun v ->
       interp (Tacexpr.TacArg(Loc.ghost,valueIn v)))
-    end
+    end }
   in
   constr_from_goal (Proofview.V82.of_tactic tac g)
 
