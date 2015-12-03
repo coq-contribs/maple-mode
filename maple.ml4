@@ -390,39 +390,20 @@ let constr_from_goal gls =
 	   | _ -> failwith "ill-formed goal")
     | _ -> failwith "ill-formed goal"
 
-let red_of_tac tac c g =
+let red_of_tac name c g =
+  let dp = make_dirpath (List.map id_of_string ["Maple";"MapleMode"]) in
+  let tac = lazy(make_kn (MPfile dp) (make_dirpath []) (mk_label name)) in
   let id = Id.of_string "X" in
   let arg = Tacinterp.Value.of_constr c in
   let ist = { lfun = Id.Map.singleton id arg; extra = TacStore.empty } in
 (*  let tac = ltac_letin ("F", Tacexp tac) (ltac_lcall "F" [carg c]) in*)
   let arg = Reference (Misctypes.ArgVar (Loc.ghost, id)) in
   let tac = ltac_call tac [arg] in
-  let tac =
-    Proofview.Goal.nf_enter { enter = begin fun gl ->
-      (val_interp ist tac) (fun v ->
-      interp (Tacexpr.TacArg(Loc.ghost,valueIn v)))
-    end }
-  in
+  let tac = eval_tactic_ist ist tac in
   constr_from_goal (Proofview.V82.of_tactic tac g)
 
-let apply_tac tac =
-  apply_ope (red_of_tac tac)
-
-(*
-let declare_redexpr id tac =
-  Redexpr.declare_reduction id (apply_tac tac)
-
-VERNAC COMMAND EXTEND NewRed
-  | [ "Add" "Reduction" ident(id) ":=" tactic(tac) ] ->
-    [ declare_redexpr (string_of_id id) (glob_tactic tac) ]
-END
-*)
-let maple_tac s =
-  let dp = make_dirpath (List.map id_of_string ["Maple";"MapleMode"]) in
-  lazy(make_kn (MPfile dp) (make_dirpath []) (mk_label s))
-
 let maple_reduce ope =
-  apply_tac (maple_tac ope)
+  apply_ope (red_of_tac ope)
 
 let _ = Redexpr.declare_reduction "simplify" (maple_reduce "red_simplify") in
 let _ = Redexpr.declare_reduction "factor" (maple_reduce "red_factor") in
