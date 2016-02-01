@@ -326,7 +326,7 @@ let operation ope csr g =
 (* Replace rels by names *)
 let name_rels env c =
   let (env,subst) =
-    fold_rel_context (fun _ (na,b,t) (env,subst) ->
+    Context.Rel.fold_outside (fun _ (na,b,t) (env,subst) ->
       let id = match na with
 	| Name id -> id
 	| _ -> next_ident_away (id_of_string "x") (ids_of_context env) in
