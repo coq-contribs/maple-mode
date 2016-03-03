@@ -19,7 +19,6 @@
 
 .DEFAULT_GOAL := all
 
-# 
 # This Makefile may take arguments passed as environment variables:
 # COQBIN to specify the directory where Coq binaries resides;
 # TIMECMD set a command to log .v compilation time;
@@ -35,10 +34,14 @@ endef
 includecmdwithout@ = $(eval $(subst @,$(donewline),$(shell { $(1) | tr -d '\r' | tr '\n' '@'; })))
 $(call includecmdwithout@,$(COQBIN)coqtop -config)
 
-TIMED=
-TIMECMD=
-STDTIME?=/usr/bin/time -f "$* (user: %U mem: %M ko)"
+TIMED?=
+TIMECMD?=
+STDTIME=/usr/bin/time -f "$* (user: %U mem: %M ko)"
 TIMER=$(if $(TIMED), $(STDTIME), $(TIMECMD))
+
+vo_to_obj = $(addsuffix .o,\
+  $(filter-out Warning: Error:,\
+  $(shell $(COQBIN)coqtop -q -noinit -batch -quiet -print-mod-uid $(1))))
 
 ##########################
 #                        #
@@ -46,12 +49,12 @@ TIMER=$(if $(TIMED), $(STDTIME), $(TIMECMD))
 #                        #
 ##########################
 
-OCAMLLIBS?=-I "fake_maple"\
-  -I "."
+OCAMLLIBS?=-I "."\
+  -I "fake_maple"
 COQLIBS?=\
   -R "." MapleMode\
-  -I "fake_maple"\
-  -I "."
+  -I "."\
+  -I "fake_maple"
 COQDOCLIBS?=\
   -R "." MapleMode
 
@@ -75,47 +78,42 @@ COQCHK?="$(COQBIN)coqchk"
 COQMKTOP?="$(COQBIN)coqmktop"
 
 COQSRCLIBS?=-I "$(COQLIB)kernel" -I "$(COQLIB)lib" \
-  -I "$(COQLIB)library" -I "$(COQLIB)parsing" -I "$(COQLIB)pretyping" \
+  -I "$(COQLIB)library" -I "$(COQLIB)parsing" -I "$(COQLIB)engine" -I "$(COQLIB)pretyping" \
   -I "$(COQLIB)interp" -I "$(COQLIB)printing" -I "$(COQLIB)intf" \
   -I "$(COQLIB)proofs" -I "$(COQLIB)tactics" -I "$(COQLIB)tools" \
   -I "$(COQLIB)toplevel" -I "$(COQLIB)stm" -I "$(COQLIB)grammar" \
   -I "$(COQLIB)config" \
-  -I "$(COQLIB)/plugins/Derive" \
   -I "$(COQLIB)/plugins/btauto" \
   -I "$(COQLIB)/plugins/cc" \
   -I "$(COQLIB)/plugins/decl_mode" \
-  -I "$(COQLIB)/plugins/dp" \
+  -I "$(COQLIB)/plugins/derive" \
   -I "$(COQLIB)/plugins/extraction" \
-  -I "$(COQLIB)/plugins/field" \
   -I "$(COQLIB)/plugins/firstorder" \
   -I "$(COQLIB)/plugins/fourier" \
   -I "$(COQLIB)/plugins/funind" \
-  -I "$(COQLIB)/plugins/groebner" \
-  -I "$(COQLIB)/plugins/interface" \
   -I "$(COQLIB)/plugins/micromega" \
   -I "$(COQLIB)/plugins/nsatz" \
   -I "$(COQLIB)/plugins/omega" \
   -I "$(COQLIB)/plugins/quote" \
-  -I "$(COQLIB)/plugins/ring" \
   -I "$(COQLIB)/plugins/romega" \
   -I "$(COQLIB)/plugins/rtauto" \
   -I "$(COQLIB)/plugins/setoid_ring" \
-  -I "$(COQLIB)/plugins/subtac" \
   -I "$(COQLIB)/plugins/syntax" \
   -I "$(COQLIB)/plugins/xml"
 ZFLAGS=$(OCAMLLIBS) $(COQSRCLIBS) -I $(CAMLP4LIB)
 
-CAMLC?=$(OCAMLC) -c -rectypes -thread
-CAMLOPTC?=$(OCAMLOPT) -c -rectypes -thread
-CAMLLINK?=$(OCAMLC) -rectypes -thread
-CAMLOPTLINK?=$(OCAMLOPT) -rectypes -thread
+CAMLC?=$(OCAMLFIND) ocamlc -c -rectypes -thread
+CAMLOPTC?=$(OCAMLFIND) opt -c -rectypes -thread
+CAMLLINK?=$(OCAMLFIND) ocamlc -rectypes -thread
+CAMLOPTLINK?=$(OCAMLFIND) opt -rectypes -thread
+CAMLLIB?=$(shell $(OCAMLFIND) printconf stdlib)
 GRAMMARS?=grammar.cma
 ifeq ($(CAMLP4),camlp5)
 CAMLP4EXTEND=pa_extend.cmo q_MLast.cmo pa_macro.cmo unix.cma threads.cma
 else
-CAMLP4EXTEND=
+CAMLP4EXTEND=threads.cma
 endif
-PP?=-pp '$(CAMLP4O) -I $(CAMLLIB) -I $(CAMLLIB)threads/ $(COQSRCLIBS) compat5.cmo \
+PP?=-pp '$(CAMLP4O) -I $(CAMLLIB) -I $(CAMLLIB)/threads/ $(COQSRCLIBS) compat5.cmo \
   $(CAMLP4EXTEND) $(GRAMMARS) $(CAMLP4OPTIONS) -impl'
 
 ##################
@@ -140,10 +138,17 @@ endif
 #                    #
 ######################
 
-VFILES:=Maple.v\
-  Examples.v
+VFILES:=Examples.v\
+  Maple.v
 
+ifneq ($(filter-out archclean clean cleanall printenv,$(MAKECMDGOALS)),)
 -include $(addsuffix .d,$(VFILES))
+else
+ifeq ($(MAKECMDGOALS),)
+-include $(addsuffix .d,$(VFILES))
+endif
+endif
+
 .SECONDARY: $(addsuffix .d,$(VFILES))
 
 VO=vo
@@ -152,10 +157,20 @@ GLOBFILES:=$(VFILES:.v=.glob)
 GFILES:=$(VFILES:.v=.g)
 HTMLFILES:=$(VFILES:.v=.html)
 GHTMLFILES:=$(VFILES:.v=.g.html)
-ML4FILES:=fake_maple/fake_maple.ml4\
-  maple.ml4
+OBJFILES=$(call vo_to_obj,$(VOFILES))
+ALLNATIVEFILES=$(OBJFILES:.o=.cmi) $(OBJFILES:.o=.cmo) $(OBJFILES:.o=.cmx) $(OBJFILES:.o=.cmxs)
+NATIVEFILES=$(foreach f, $(ALLNATIVEFILES), $(wildcard $f))
+ML4FILES:=maple.ml4\
+  fake_maple/fake_maple.ml4
 
+ifneq ($(filter-out archclean clean cleanall printenv,$(MAKECMDGOALS)),)
 -include $(addsuffix .d,$(ML4FILES))
+else
+ifeq ($(MAKECMDGOALS),)
+-include $(addsuffix .d,$(ML4FILES))
+endif
+endif
+
 .SECONDARY: $(addsuffix .d,$(ML4FILES))
 
 ALLCMOFILES:=$(ML4FILES:.ml4=.cmo)
@@ -176,8 +191,8 @@ endif
 #                                     #
 #######################################
 
-all: $(VOFILES) $(CMOFILES) $(if $(HASNATDYNLINK_OR_EMPTY),$(CMXSFILES)) Maple.vo\
-  fake_maple/fake_maple
+all: $(VOFILES) $(CMOFILES) $(if $(HASNATDYNLINK_OR_EMPTY),$(CMXSFILES)) fake_maple/fake_maple\
+  Maple.vo
 
 quick: $(VOFILES:.vo=.vio)
 
@@ -215,7 +230,7 @@ beautify: $(VFILES:=.beautified)
 	@echo 'Do not do "make clean" until you are sure that everything went well!'
 	@echo 'If there were a problem, execute "for file in $$(find . -name \*.v.old -print); do mv $${file} $${file%.old}; done" in your shell/'
 
-.PHONY: all opt byte archclean clean install uninstall_me.sh uninstall userinstall depend html validate
+.PHONY: all archclean beautify byte clean cleanall gallina gallinahtml html install install-doc install-natdynlink install-toploop opt printenv quick uninstall userinstall validate vio2vo
 
 ###################
 #                 #
@@ -223,10 +238,10 @@ beautify: $(VFILES:=.beautified)
 #                 #
 ###################
 
-Maple.vo: fake_maple/fake_maple
-
 fake_maple/fake_maple: fake_maple/fake_maple.cmo
 	$(CAMLLINK) -o $@ str.cma $<
+
+Maple.vo: fake_maple/fake_maple
 
 ####################
 #                  #
@@ -252,10 +267,10 @@ install-natdynlink:
 
 install-toploop: $(MLLIBFILES:.mllib=.cmxs)
 	 install -d "$(DSTROOT)"$(COQTOPINSTALL)/
-	 install -m 0644 $?  "$(DSTROOT)"$(COQTOPINSTALL)/
+	 install -m 0755 $?  "$(DSTROOT)"$(COQTOPINSTALL)/
 
 install:$(if $(HASNATDYNLINK_OR_EMPTY),install-natdynlink)
-	cd "." && for i in $(VOFILES) $(CMOFILES) $(CMIFILES) $(CMAFILES); do \
+	cd "." && for i in $(VOFILES) $(VFILES) $(GLOBFILES) $(NATIVEFILES) $(CMOFILES) $(CMIFILES) $(CMAFILES); do \
 	 install -d "`dirname "$(DSTROOT)"$(COQLIBINSTALL)/MapleMode/$$i`"; \
 	 install -m 0644 $$i "$(DSTROOT)"$(COQLIBINSTALL)/MapleMode/$$i; \
 	done
@@ -266,10 +281,10 @@ install-doc:
 	 install -m 0644 $$i "$(DSTROOT)"$(COQDOCINSTALL)/MapleMode/$$i;\
 	done
 
-uninstall_me.sh:
-	echo '#!/bin/sh' > $@ 
+uninstall_me.sh: Makefile
+	echo '#!/bin/sh' > $@
 	printf 'cd "$${DSTROOT}"$(COQLIBINSTALL)/MapleMode && rm -f $(CMXSFILES) && find . -type d -and -empty -delete\ncd "$${DSTROOT}"$(COQLIBINSTALL) && find "MapleMode" -maxdepth 0 -and -empty -exec rmdir -p \{\} \;\n' >> "$@"
-	printf 'cd "$${DSTROOT}"$(COQLIBINSTALL)/MapleMode && rm -f $(VOFILES) $(CMOFILES) $(CMIFILES) $(CMAFILES) && find . -type d -and -empty -delete\ncd "$${DSTROOT}"$(COQLIBINSTALL) && find "MapleMode" -maxdepth 0 -and -empty -exec rmdir -p \{\} \;\n' >> "$@"
+	printf 'cd "$${DSTROOT}"$(COQLIBINSTALL)/MapleMode && rm -f $(VOFILES) $(VFILES) $(GLOBFILES) $(NATIVEFILES) $(CMOFILES) $(CMIFILES) $(CMAFILES) && find . -type d -and -empty -delete\ncd "$${DSTROOT}"$(COQLIBINSTALL) && find "MapleMode" -maxdepth 0 -and -empty -exec rmdir -p \{\} \;\n' >> "$@"
 	printf 'cd "$${DSTROOT}"$(COQDOCINSTALL)/MapleMode \\\n' >> "$@"
 	printf '&& rm -f $(shell find "html" -maxdepth 1 -and -type f -print)\n' >> "$@"
 	printf 'cd "$${DSTROOT}"$(COQDOCINSTALL) && find MapleMode/html -maxdepth 0 -and -empty -exec rmdir -p \{\} \;\n' >> "$@"
@@ -278,23 +293,27 @@ uninstall_me.sh:
 uninstall: uninstall_me.sh
 	sh $<
 
-clean:
+clean::
 	rm -f $(ALLCMOFILES) $(CMIFILES) $(CMAFILES)
 	rm -f $(ALLCMOFILES:.cmo=.cmx) $(CMXAFILES) $(CMXSFILES) $(ALLCMOFILES:.cmo=.o) $(CMXAFILES:.cmxa=.a)
 	rm -f $(addsuffix .d,$(MLFILES) $(MLIFILES) $(ML4FILES) $(MLLIBFILES) $(MLPACKFILES))
+	rm -f $(OBJFILES) $(OBJFILES:.o=.native) $(NATIVEFILES)
+	find . -name .coq-native -type d -empty -delete
 	rm -f $(VOFILES) $(VOFILES:.vo=.vio) $(GFILES) $(VFILES:.v=.v.d) $(VFILES:=.beautified) $(VFILES:=.old)
 	rm -f all.ps all-gal.ps all.pdf all-gal.pdf all.glob $(VFILES:.v=.glob) $(VFILES:.v=.tex) $(VFILES:.v=.g.tex) all-mli.tex
 	- rm -rf html mlihtml uninstall_me.sh
-	- rm -rf Maple.vo
 	- rm -rf fake_maple/fake_maple
+	- rm -rf Maple.vo
 
-archclean:
+cleanall:: clean
+	rm -f $(patsubst %.v,.%.aux,$(VFILES))
+
+archclean::
 	rm -f *.cmx *.o
 
 printenv:
 	@"$(COQBIN)coqtop" -config
-	@echo 'CAMLC =	$(CAMLC)'
-	@echo 'CAMLOPTC =	$(CAMLOPTC)'
+	@echo 'OCAMLFIND =	$(OCAMLFIND)'
 	@echo 'PP =	$(PP)'
 	@echo 'COQFLAGS =	$(COQFLAGS)'
 	@echo 'COQLIBINSTALL =	$(COQLIBINSTALL)'
@@ -318,7 +337,7 @@ $(filter-out $(addsuffix .cmx,$(foreach lib,$(MLPACKFILES:.mlpack=_MLPACK_DEPEND
 	$(CAMLOPTC) $(ZDEBUG) $(ZFLAGS) $(PP) -impl $<
 
 $(addsuffix .d,$(ML4FILES)): %.ml4.d: %.ml4
-	$(COQDEP) $(OCAMLLIBS) "$<" > "$@" || ( RV=$$?; rm -f "$@"; exit $${RV} )
+	$(OCAMLFIND) ocamldep -slash $(OCAMLLIBS) $(PP) -impl "$<" > "$@" || ( RV=$$?; rm -f "$@"; exit $${RV} )
 
 $(filter-out $(MLLIBFILES:.mllib=.cmxs),$(MLFILES:.ml=.cmxs) $(ML4FILES:.ml4=.cmxs) $(MLPACKFILES:.mlpack=.cmxs)): %.cmxs: %.cmx
 	$(CAMLOPTLINK) $(ZDEBUG) $(ZFLAGS) -shared -o $@ $<
