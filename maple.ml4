@@ -5,6 +5,7 @@ open Errors
 open Flags
 
 open Names
+open Context
 open Nameops
 open Term
 open Vars
@@ -19,6 +20,7 @@ open Tacticals
 open Tacexpr
 open Namegen
 open Proofview.Notations
+open Constrarg
 
 DECLARE PLUGIN "maple"
 
@@ -326,11 +328,14 @@ let operation ope csr g =
 (* Replace rels by names *)
 let name_rels env c =
   let (env,subst) =
-    Context.Rel.fold_outside (fun _ (na,b,t) (env,subst) ->
+    Environ.fold_rel_context (fun _ decl (env,subst) ->
+      let (na, b, t) = Rel.Declaration.to_tuple decl in
       let id = match na with
 	| Name id -> id
 	| _ -> next_ident_away (id_of_string "x") (ids_of_context env) in
-      (push_named (substl_named_decl subst (id,b,t)) env, mkVar id :: subst))
+      let decl = Named.Declaration.of_tuple (id, b, t) in
+      let decl = Named.Declaration.map_constr (Vars.substl subst) decl in
+      (push_named decl env, mkVar id :: subst))
       env
       ~init:(reset_with_named_context (named_context_val env) env, []) in
   (env, List.map destVar subst, substl subst c)
@@ -364,14 +369,15 @@ let ltac_lcall tac args =
 let ltac_letin (x, e1) e2 =
   TacLetIn(false,[(Loc.ghost,Id.of_string x),e1],e2)
 
-let ltac_apply (f:glob_tactic_expr) (arg:constr) =
+let ltac_apply (f: Tacinterp.Value.t) (arg:constr) =
   let ist = Tacinterp.default_ist () in
   let id = Id.of_string "X" in
   let arg = Tacinterp.Value.of_constr arg in
-  let ist = { ist with Tacinterp.lfun = Id.Map.add id arg ist.lfun } in
+  let idf = Id.of_string "F" in
+  let ist = { ist with Tacinterp.lfun = Id.Map.add idf f (Id.Map.add id arg ist.lfun) } in
   let arg = Reference (Misctypes.ArgVar (Loc.ghost, id)) in
   Tacinterp.eval_tactic_ist ist
-    (ltac_letin ("F", Tacexp f) (ltac_lcall "F" [arg]))
+    (ltac_lcall "F" [arg])
 
 TACTIC EXTEND maple_fun_simplify
 | [ "tac_iter" tactic0(tac) ne_constr_list(cl) ] ->
