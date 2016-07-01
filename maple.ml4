@@ -183,7 +183,7 @@ let dest_bigint =
 	let (q,r) = Bigint.div2_with_rest n in
 	if r then PI q else PO q))
 
-let whd_all t = whd_betadeltaiota (Global.env()) Evd.empty t
+let whd_all t = whd_all (Global.env()) Evd.empty t
 
 let dest_pos =
   ((fun p -> Zpos p),
