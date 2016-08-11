@@ -329,12 +329,13 @@ let operation ope csr g =
 let name_rels env c =
   let (env,subst) =
     Environ.fold_rel_context (fun _ decl (env,subst) ->
-      let (na, b, t) = Rel.Declaration.to_tuple decl in
-      let id = match na with
-	| Name id -> id
-	| _ -> next_ident_away (id_of_string "x") (ids_of_context env) in
-      let decl = Named.Declaration.of_tuple (id, b, t) in
-      let decl = Named.Declaration.map_constr (Vars.substl subst) decl in
+      let decl = decl |> Named.Declaration.of_rel (function
+                                                  | Anonymous -> next_ident_away (id_of_string "x") (ids_of_context env)
+                                                  | Name id -> id
+                                                  )
+                      |> Named.Declaration.map_constr (Vars.substl subst)
+      in
+      let id = Context.Named.Declaration.get_id decl in
       (push_named decl env, mkVar id :: subst))
       env
       ~init:(reset_with_named_context (named_context_val env) env, []) in
