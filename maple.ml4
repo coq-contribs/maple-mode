@@ -329,10 +329,10 @@ let operation ope csr g =
 let name_rels env c =
   let (env,subst) =
     Environ.fold_rel_context (fun _ decl (env,subst) ->
-      let decl = decl |> Named.Declaration.of_rel (function
-                                                  | Anonymous -> next_ident_away (id_of_string "x") (ids_of_context env)
-                                                  | Name id -> id
-                                                  )
+      let decl = decl |> Named.Declaration.of_rel_decl (function
+                                                       | Anonymous -> next_ident_away (id_of_string "x") (ids_of_context env)
+                                                       | Name id -> id
+                                                       )
                       |> Named.Declaration.map_constr (Vars.substl subst)
       in
       let id = Context.Named.Declaration.get_id decl in
