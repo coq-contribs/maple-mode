@@ -74,7 +74,7 @@ let is_maple flag =
     (if flag then if_verbose print_logo maple)
   else
     (if flag then print_endline "\nError: Cannot find Maple"
-     else errorlabstrm "is_maple" (str "Cannot find Maple"));
+     else user_err ~hdr:"is_maple" (str "Cannot find Maple"));
   maple
 
 (* The expression data type *)
@@ -247,7 +247,7 @@ let rec expra_to_expr csr =
 let expra_to_expr c =
   try expra_to_expr c
   with Not_found ->
-    errorlabstrm "expra_to_expr" (str "This term is not of type FExpr")
+    user_err ~hdr:"expra_to_expr" (str "This term is not of type FExpr")
 
 (* Builds ExprA expressions from expr expressions *)
 let rec expr_to_expra = function
