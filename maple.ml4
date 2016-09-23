@@ -21,6 +21,7 @@ open Tacexpr
 open Namegen
 open Proofview.Notations
 open Stdarg
+open Tacarg
 
 DECLARE PLUGIN "maple"
 
