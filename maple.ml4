@@ -20,7 +20,7 @@ open Tacticals
 open Tacexpr
 open Namegen
 open Proofview.Notations
-open Constrarg
+open Stdarg
 
 DECLARE PLUGIN "maple"
 
