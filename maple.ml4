@@ -4,6 +4,7 @@ open Pp
 open CErrors
 open Flags
 
+open Ltac_plugin
 open Names
 open Context
 open Nameops
