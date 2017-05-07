@@ -10,6 +10,7 @@ open Context
 open Nameops
 open Term
 open Vars
+open EConstr
 open Termops
 open Environ
 open Reductionops
@@ -92,7 +93,7 @@ type expr =
 let constr_from dir s =
   let id = id_of_string s in
   try
-    Universes.constr_of_reference (Nametab.global_of_path (make_path dir id))
+    EConstr.of_constr (Universes.constr_of_reference (Nametab.global_of_path (make_path dir id)))
   with Not_found -> anomaly (Pp.str ("Could not find '"^s^"'."))
 
 (* Builds the constants of the Field reflexion structure *)
@@ -185,69 +186,71 @@ let dest_bigint =
 	let (q,r) = Bigint.div2_with_rest n in
 	if r then PI q else PO q))
 
-let whd_all t = whd_all (Global.env()) Evd.empty t
+let whd_all sigma t = whd_all (Global.env()) sigma t
 
-let dest_pos =
+let dest_pos sigma =
   ((fun p -> Zpos p),
    (fun p ->
-      let p = whd_all p in
-      if Constr.equal p xH then P1 else
-	match kind_of_term p with
+      let p = whd_all sigma p in
+      if EConstr.eq_constr sigma p xH then P1 else
+	match EConstr.kind sigma p with
 	    App(h,[|q|]) ->
-	      if Constr.equal h xO then PO q
-	      else if Constr.equal h xI then PI q
+	      if EConstr.eq_constr sigma h xO then PO q
+	      else if EConstr.eq_constr sigma h xI then PI q
 	      else failwith "not a ground positive"
 	  | _ -> failwith "not a ground positive"))
 
-let dest_N =
+let dest_N sigma =
   ((fun n ->
-      let n = whd_all n in
-      if Constr.equal n n0 then Z0 else
-	match kind_of_term n with
-	    App(h,[|q|]) when Constr.equal h npos -> Zpos q
+      let n = whd_all sigma n in
+      if EConstr.eq_constr sigma n n0 then Z0 else
+	match kind sigma n with
+	    App(h,[|q|]) when EConstr.eq_constr sigma h npos -> Zpos q
 	  | _ -> failwith "not a ground N natural"),
-   snd dest_pos)
+   snd (dest_pos sigma))
 
-let dest_Z =
+let dest_Z sigma =
   ((fun n ->
-      let n = whd_all n in
-      if Constr.equal n z0 then Z0 else
-	match kind_of_term n with
+      let n = whd_all sigma n in
+      if EConstr.eq_constr sigma n z0 then Z0 else
+	match kind sigma n with
 	    App(h,[|q|]) ->
-	      if Constr.equal h zpos then Zpos q
-	      else if Constr.equal h zneg then Zneg q
+	      if EConstr.eq_constr sigma h zpos then Zpos q
+	      else if EConstr.eq_constr sigma h zneg then Zneg q
 	      else failwith "not a ground Z number"
 	  | _ -> failwith "not a ground Z number"),
-   snd dest_pos)
+   snd (dest_pos sigma))
 
 (* Builds expr expressions from ExprA expressions *)
-let rec expra_to_expr csr =
-  match kind_of_term csr with
+let expra_to_expr sigma =
+  let rec expra_to_expr csr =
+  match kind sigma csr with
   | App(c,[|_;t1;t2|]) ->
-      let op = CList.assoc_f Constr.equal c
+      let op = CList.assoc_f (EConstr.eq_constr sigma) c
 	[fadd,(fun () -> Add(expra_to_expr t1, expra_to_expr t2));
 	 fsub,(fun () -> Add(expra_to_expr t1, Opp(expra_to_expr t2)));
 	 fmul,(fun () -> Mul(expra_to_expr t1, expra_to_expr t2));
 	 fdiv,(fun () -> Mul(expra_to_expr t1, Inv(expra_to_expr t2)));
-	 fpow,(fun () -> Pow(expra_to_expr t1, bin_trans dest_N mk_int t2))] in
+	 fpow,(fun () -> Pow(expra_to_expr t1, bin_trans (dest_N sigma) mk_int t2))] in
       op()
   | App(c,[|_;t|]) ->
-      let op = CList.assoc_f Constr.equal  c
+      let op = CList.assoc_f (EConstr.eq_constr sigma) c
 	[fopp,(fun () -> Opp(expra_to_expr t));
 	 finv,(fun () -> Inv(expra_to_expr t));
-	 fvar,(fun () -> Var(bin_trans dest_pos mk_int t));
-	 fcst,(fun () -> Cst(bin_trans dest_Z mk_bigint t))] in
+	 fvar,(fun () -> Var(bin_trans (dest_pos sigma) mk_int t));
+	 fcst,(fun () -> Cst(bin_trans (dest_Z sigma) mk_bigint t))] in
       op()
   | App(c, [|_|]) ->
-    let op = CList.assoc_f Constr.equal c
+    let op = CList.assoc_f (EConstr.eq_constr sigma) c
     [fcs0,(fun () -> Cst Bigint.zero);
      fcs1,(fun () -> Cst Bigint.one)] in
     op()
   | _ ->
     raise Not_found
+  in expra_to_expr
 
-let expra_to_expr c =
-  try expra_to_expr c
+let expra_to_expr sigma c =
+  try expra_to_expr sigma c
   with Not_found ->
     user_err ~hdr:"expra_to_expr" (str "This term is not of type FExpr")
 
@@ -323,7 +326,7 @@ let maple_call exe =
 
 (* Generic operation of Maple *)
 let operation ope csr g =
-  let ste = string_of_expr (expra_to_expr csr) in
+  let ste = string_of_expr (expra_to_expr (Tacmach.project g) csr) in
   let res = maple_call (ope^"("^ste^")") in
   expr_to_expra res
 
@@ -335,21 +338,21 @@ let name_rels env c =
                                                        | Anonymous -> next_ident_away (id_of_string "x") (ids_of_context env)
                                                        | Name id -> id
                                                        )
-                      |> Named.Declaration.map_constr (Vars.substl subst)
+                      |> Named.Declaration.map_constr (substl subst)
       in
       let id = Context.Named.Declaration.get_id decl in
-      (push_named decl env, mkVar id :: subst))
+      (push_named decl env, Constr.mkVar id :: subst))
       env
       ~init:(reset_with_named_context (named_context_val env) env, []) in
-  (env, List.map destVar subst, substl subst c)
+  (env, List.map Term.destVar subst, substl subst c)
 
 let apply_ope ope env sigma c =
-  let (env,vars,c) = name_rels env c in
+  let (env,vars,c) = name_rels env (EConstr.to_constr sigma c) in
   let g, _, sigma =
     Goal.V82.mk_goal sigma (named_context_val env) (*Dummy goal*)
       mkProp Evd.Store.empty in
   let g = { Evd.it=g; Evd.sigma=sigma; } in
-  subst_vars vars (ope c g)
+  EConstr.Vars.subst_vars vars (ope (EConstr.of_constr c) g)
 
 let maple ope = apply_ope (operation ope)
 
@@ -391,9 +394,9 @@ let constr_from_goal gls =
   match gls.Evd.it with
       [concl] ->
         let g = Goal.V82.concl gls.Evd.sigma concl in
-	(match kind_of_term g with
+	(match kind gls.Evd.sigma g with
 	     Prod(_,eq,_) ->
-	       (match kind_of_term eq with
+	       (match kind gls.Evd.sigma eq with
 		    App(h,[|_;lhs;_|]) -> lhs
 		  | _ -> failwith "ill-formed goal")
 	   | _ -> failwith "ill-formed goal")
