@@ -319,7 +319,9 @@ let maple_call exe =
     let maple = is_maple false in
     let _ = Sys.command ("echo \""^ins^"\" | "^maple^" -q") in ();
     let inc = open_in tmp in
-    let exp = Grammar.Entry.parse mexpr_s (Stream.of_channel inc) in
+    let exp =
+      try Grammar.Entry.parse mexpr_s (Stream.of_channel inc)
+      with Ploc.Exc (loc,e) -> Loc.raise ~loc:(Pcoq.to_coqloc loc) e in
     begin
       close_in inc;
       Sys.remove tmp;
@@ -426,4 +428,4 @@ let _ = Redexpr.declare_reduction "expand" (maple_reduce "red_expand") in
 let _ = Redexpr.declare_reduction "normal" (maple_reduce "red_normal") in ()
 
 (* Verifies if Maple is available during the ML loading *)
-let _ = is_maple true
+(*let _ = is_maple true*)
