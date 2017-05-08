@@ -93,8 +93,10 @@ type expr =
 let constr_from dir s =
   let id = id_of_string s in
   try
-    EConstr.of_constr (Universes.constr_of_reference (Nametab.global_of_path (make_path dir id)))
+    lazy (EConstr.of_constr (Universes.constr_of_reference (Nametab.global_of_path (make_path dir id))))
   with Not_found -> anomaly (Pp.str ("Could not find '"^s^"'."))
+
+let (!!) = Lazy.force
 
 (* Builds the constants of the Field reflexion structure *)
 let path_field_theory =
@@ -136,7 +138,8 @@ let npos = constr_from path_bin "Npos"
 (* Generic transformers between various flavours of numbers *)
 type 'a pos = P1 | PO of 'a | PI of 'a
 type 'a z = Z0 | Zpos of 'a | Zneg of 'a
-let bin_trans (dz, dp) (f0, fpos, fneg, f1, f2n, f2n1) n =
+let bin_trans (dz, dp) mk n =
+  let (f0, fpos, fneg, f1, f2n, f2n1) = mk () in
   let rec trad n =
     match dp n with
       | P1 -> f1
@@ -147,24 +150,24 @@ let bin_trans (dz, dp) (f0, fpos, fneg, f1, f2n, f2n1) n =
     | Zpos p -> fpos (trad p)
     | Zneg p -> fneg (trad p)
 
-let mk_int =
+let mk_int () =
   (0, (fun x->x), (fun x-> -x), 1, (fun x->2*x), (fun x->2*x+1))
 
-let mk_bigint =
+let mk_bigint () =
   (Bigint.zero, (fun x->x), Bigint.neg, Bigint.one, Bigint.mult_2,
    (fun x->Bigint.add_1(Bigint.mult_2 x)))
 
-let mk_pos =
-  (xH, (fun x->x), (fun _ -> failwith"not a positive"),
-   xH, (fun x->mkApp(xO,[|x|])), (fun x->mkApp(xI,[|x|])))
+let mk_pos () =
+  (!! xH, (fun x->x), (fun _ -> failwith"not a positive"),
+   !! xH, (fun x->mkApp(!! xO,[|x|])), (fun x->mkApp(!! xI,[|x|])))
 
-let mk_N =
-  (n0, (fun x->mkApp(npos,[|x|])), (fun _ -> failwith"negative"),
-   xH, (fun x->mkApp(xO,[|x|])), (fun x->mkApp(xI,[|x|])))
+let mk_N () =
+  (!! n0, (fun x->mkApp(!! npos,[|x|])), (fun _ -> failwith"negative"),
+   !! xH, (fun x->mkApp(!! xO,[|x|])), (fun x->mkApp(!! xI,[|x|])))
 
-let mk_Z =
-  (z0, (fun x->mkApp(zpos,[|x|])), (fun x->mkApp(zneg,[|x|])),
-   xH, (fun x->mkApp(xO,[|x|])), (fun x->mkApp(xI,[|x|])))
+let mk_Z () =
+  (!! z0, (fun x->mkApp(!! zpos,[|x|])), (fun x->mkApp(!! zneg,[|x|])),
+   !! xH, (fun x->mkApp(!! xO,[|x|])), (fun x->mkApp(!! xI,[|x|])))
 
 let dest_int =
   ((fun n ->
@@ -192,31 +195,31 @@ let dest_pos sigma =
   ((fun p -> Zpos p),
    (fun p ->
       let p = whd_all sigma p in
-      if EConstr.eq_constr sigma p xH then P1 else
+      if EConstr.eq_constr sigma p (!! xH) then P1 else
 	match EConstr.kind sigma p with
 	    App(h,[|q|]) ->
-	      if EConstr.eq_constr sigma h xO then PO q
-	      else if EConstr.eq_constr sigma h xI then PI q
+	      if EConstr.eq_constr sigma h (!! xO) then PO q
+	      else if EConstr.eq_constr sigma h (!! xI) then PI q
 	      else failwith "not a ground positive"
 	  | _ -> failwith "not a ground positive"))
 
 let dest_N sigma =
   ((fun n ->
       let n = whd_all sigma n in
-      if EConstr.eq_constr sigma n n0 then Z0 else
+      if EConstr.eq_constr sigma n (!! n0) then Z0 else
 	match kind sigma n with
-	    App(h,[|q|]) when EConstr.eq_constr sigma h npos -> Zpos q
+	    App(h,[|q|]) when EConstr.eq_constr sigma h (!! npos) -> Zpos q
 	  | _ -> failwith "not a ground N natural"),
    snd (dest_pos sigma))
 
 let dest_Z sigma =
   ((fun n ->
       let n = whd_all sigma n in
-      if EConstr.eq_constr sigma n z0 then Z0 else
+      if EConstr.eq_constr sigma n (!! z0) then Z0 else
 	match kind sigma n with
 	    App(h,[|q|]) ->
-	      if EConstr.eq_constr sigma h zpos then Zpos q
-	      else if EConstr.eq_constr sigma h zneg then Zneg q
+	      if EConstr.eq_constr sigma h (!! zpos) then Zpos q
+	      else if EConstr.eq_constr sigma h (!! zneg) then Zneg q
 	      else failwith "not a ground Z number"
 	  | _ -> failwith "not a ground Z number"),
    snd (dest_pos sigma))
@@ -227,23 +230,23 @@ let expra_to_expr sigma =
   match kind sigma csr with
   | App(c,[|_;t1;t2|]) ->
       let op = CList.assoc_f (EConstr.eq_constr sigma) c
-	[fadd,(fun () -> Add(expra_to_expr t1, expra_to_expr t2));
-	 fsub,(fun () -> Add(expra_to_expr t1, Opp(expra_to_expr t2)));
-	 fmul,(fun () -> Mul(expra_to_expr t1, expra_to_expr t2));
-	 fdiv,(fun () -> Mul(expra_to_expr t1, Inv(expra_to_expr t2)));
-	 fpow,(fun () -> Pow(expra_to_expr t1, bin_trans (dest_N sigma) mk_int t2))] in
+	[!! fadd,(fun () -> Add(expra_to_expr t1, expra_to_expr t2));
+	 !! fsub,(fun () -> Add(expra_to_expr t1, Opp(expra_to_expr t2)));
+	 !! fmul,(fun () -> Mul(expra_to_expr t1, expra_to_expr t2));
+	 !! fdiv,(fun () -> Mul(expra_to_expr t1, Inv(expra_to_expr t2)));
+	 !! fpow,(fun () -> Pow(expra_to_expr t1, bin_trans (dest_N sigma) mk_int t2))] in
       op()
   | App(c,[|_;t|]) ->
       let op = CList.assoc_f (EConstr.eq_constr sigma) c
-	[fopp,(fun () -> Opp(expra_to_expr t));
-	 finv,(fun () -> Inv(expra_to_expr t));
-	 fvar,(fun () -> Var(bin_trans (dest_pos sigma) mk_int t));
-	 fcst,(fun () -> Cst(bin_trans (dest_Z sigma) mk_bigint t))] in
+	[!! fopp,(fun () -> Opp(expra_to_expr t));
+	 !! finv,(fun () -> Inv(expra_to_expr t));
+	 !! fvar,(fun () -> Var(bin_trans (dest_pos sigma) mk_int t));
+	 !! fcst,(fun () -> Cst(bin_trans (dest_Z sigma) mk_bigint t))] in
       op()
   | App(c, [|_|]) ->
     let op = CList.assoc_f (EConstr.eq_constr sigma) c
-    [fcs0,(fun () -> Cst Bigint.zero);
-     fcs1,(fun () -> Cst Bigint.one)] in
+    [!! fcs0,(fun () -> Cst Bigint.zero);
+     !! fcs1,(fun () -> Cst Bigint.one)] in
     op()
   | _ ->
     raise Not_found
@@ -256,13 +259,13 @@ let expra_to_expr sigma c =
 
 (* Builds ExprA expressions from expr expressions *)
 let rec expr_to_expra = function
-  | Cst n -> mkApp (fcst,[|zcoq;bin_trans dest_bigint mk_Z n|])
-  | Var n -> mkApp (fvar,[|zcoq;bin_trans dest_int mk_pos n|])
-  | Opp e -> mkApp (fopp,[|zcoq;expr_to_expra e|])
-  | Inv e -> mkApp (finv,[|zcoq;expr_to_expra e|])
-  | Add (e1,e2) -> mkApp (fadd,[|zcoq;expr_to_expra e1;expr_to_expra e2|])
-  | Mul (e1,e2) -> mkApp (fmul,[|zcoq;expr_to_expra e1;expr_to_expra e2|])
-  | Pow (e,n) -> mkApp (fpow,[|zcoq;expr_to_expra e;bin_trans dest_int mk_N n|])
+  | Cst n -> mkApp (!! fcst,[|!! zcoq;bin_trans dest_bigint mk_Z n|])
+  | Var n -> mkApp (!! fvar,[|!! zcoq;bin_trans dest_int mk_pos n|])
+  | Opp e -> mkApp (!! fopp,[|!! zcoq;expr_to_expra e|])
+  | Inv e -> mkApp (!! finv,[|!! zcoq;expr_to_expra e|])
+  | Add (e1,e2) -> mkApp (!! fadd,[|!! zcoq;expr_to_expra e1;expr_to_expra e2|])
+  | Mul (e1,e2) -> mkApp (!! fmul,[|!! zcoq;expr_to_expra e1;expr_to_expra e2|])
+  | Pow (e,n) -> mkApp (!! fpow,[|!! zcoq;expr_to_expra e;bin_trans dest_int mk_N n|])
 
 (* Prepares the call to Maple *)
 let rec string_of_expr = function
@@ -367,7 +370,7 @@ let tac_iter tac lcr =
   List.fold_right (fun c a -> tclTHENFIRST (tac c) a) lcr tclIDTAC
 
 let ltac_call tac (args:glob_tactic_arg list) =
-  TacArg(Loc.ghost,TacCall(Loc.ghost, Misctypes.ArgArg(Loc.ghost, Lazy.force tac),args))
+  TacArg(Loc.ghost,TacCall(Loc.ghost, Misctypes.ArgArg(Loc.ghost, !! tac),args))
 
 let ltac_lcall tac args =
   TacArg(Loc.ghost,TacCall(Loc.ghost, Misctypes.ArgVar(Loc.ghost, Id.of_string tac),args))
