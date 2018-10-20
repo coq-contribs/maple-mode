@@ -7,7 +7,6 @@ open Flags
 open Ltac_plugin
 open Names
 open Context
-open Nameops
 open Term
 open Vars
 open EConstr
@@ -15,13 +14,10 @@ open Termops
 open Environ
 open Reductionops
 open Libnames
-open Globnames
-open Proof_type
 open Tacinterp
 open Tacticals
 open Tacexpr
 open Namegen
-open Proofview.Notations
 open Stdarg
 open Tacarg
 
@@ -91,16 +87,16 @@ type expr =
   | Pow of expr*int
 
 let constr_from dir s =
-  let id = id_of_string s in
+  let id = Id.of_string s in
   try
-    lazy (EConstr.of_constr (Universes.constr_of_reference (Nametab.global_of_path (make_path dir id))))
+    lazy (EConstr.of_constr (Universes.constr_of_global (Nametab.global_of_path (make_path dir id))))
   with Not_found -> anomaly (Pp.str ("Could not find '"^s^"'."))
 
 let (!!) = Lazy.force
 
 (* Builds the constants of the Field reflexion structure *)
 let path_field_theory =
-  make_dirpath (List.map id_of_string
+  DirPath.make (List.map Id.of_string
     (List.rev ["Coq";"setoid_ring";"Field_theory"]))
 
 let fcs0 = constr_from path_field_theory "FEO"
@@ -115,13 +111,13 @@ let finv = constr_from path_field_theory "FEinv"
 let fpow = constr_from path_field_theory "FEpow"
 let fvar = constr_from path_field_theory "FEX"
 
-let path_nat =  make_dirpath (List.map id_of_string
+let path_nat =  DirPath.make (List.map Id.of_string
     (List.rev ["Coq";"Init";"Datatypes"]))
 
 let eO = constr_from path_nat "O"
 let eS = constr_from path_nat "S";;
 
-let path_bin =  make_dirpath (List.map id_of_string
+let path_bin =  DirPath.make (List.map Id.of_string
     (List.rev ["Coq";"Numbers";"BinNums"]))
 
 let zcoq = constr_from path_bin "Z"
@@ -340,7 +336,7 @@ let name_rels env c =
   let (env,subst) =
     Environ.fold_rel_context (fun _ decl (env,subst) ->
       let decl = decl |> Named.Declaration.of_rel_decl (function
-                                                       | Anonymous -> next_ident_away (id_of_string "x") (ids_of_context env)
+                                                       | Anonymous -> next_ident_away (Id.of_string "x") (vars_of_env env)
                                                        | Name id -> id
                                                        )
                       |> Named.Declaration.map_constr (substl subst)
@@ -349,7 +345,7 @@ let name_rels env c =
       (push_named decl env, Constr.mkVar id :: subst))
       env
       ~init:(reset_with_named_context (named_context_val env) env, []) in
-  (env, List.map Term.destVar subst, substl subst c)
+  (env, List.map Constr.destVar subst, substl subst c)
 
 let apply_ope ope env sigma c =
   let (env,vars,c) = name_rels env (EConstr.to_constr sigma c) in
@@ -375,10 +371,10 @@ let ltac_call tac (args:glob_tactic_arg list) =
   TacArg(None,TacCall(None, (Misctypes.ArgArg(None, !! tac),args)))
 
 let ltac_lcall tac args =
-  TacArg(None,TacCall(None, (Misctypes.ArgVar(None, Id.of_string tac),args)))
+  TacArg(None,TacCall(None, (Misctypes.ArgVar(CAst.make (Id.of_string tac)),args)))
 
 let ltac_letin (x, e1) e2 =
-  TacLetIn(false,[(None,Id.of_string x),e1],e2)
+  TacLetIn(false,[CAst.make (Name (Id.of_string x)),e1],e2)
 
 let ltac_apply (f: Tacinterp.Value.t) (arg:constr) =
   let ist = Tacinterp.default_ist () in
@@ -386,7 +382,7 @@ let ltac_apply (f: Tacinterp.Value.t) (arg:constr) =
   let arg = Tacinterp.Value.of_constr arg in
   let idf = Id.of_string "F" in
   let ist = { ist with Tacinterp.lfun = Id.Map.add idf f (Id.Map.add id arg ist.lfun) } in
-  let arg = Reference (Misctypes.ArgVar (None, id)) in
+  let arg = Reference (Misctypes.ArgVar (CAst.make id)) in
   Tacinterp.eval_tactic_ist ist
     (ltac_lcall "F" [arg])
 
@@ -408,13 +404,13 @@ let constr_from_goal gls =
     | _ -> failwith "ill-formed goal"
 
 let red_of_tac name c g =
-  let dp = make_dirpath (List.map id_of_string ["Maple";"MapleMode"]) in
-  let tac = lazy(make_kn (MPfile dp) (make_dirpath []) (mk_label name)) in
+  let dp = DirPath.make (List.map Id.of_string ["Maple";"MapleMode"]) in
+  let tac = lazy(KerName.make (MPfile dp) (DirPath.make []) (Label.make name)) in
   let id = Id.of_string "X" in
   let arg = Tacinterp.Value.of_constr c in
   let ist = { lfun = Id.Map.singleton id arg; extra = TacStore.empty } in
 (*  let tac = ltac_letin ("F", Tacexp tac) (ltac_lcall "F" [carg c]) in*)
-  let arg = Reference (Misctypes.ArgVar (None, id)) in
+  let arg = Reference (Misctypes.ArgVar (CAst.make id)) in
   let tac = ltac_call tac [arg] in
   let tac = eval_tactic_ist ist tac in
   constr_from_goal (Proofview.V82.of_tactic tac g)
