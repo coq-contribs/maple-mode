@@ -169,7 +169,7 @@ Proof.
   replace ((3*x+3)*(y-5/3)) with t.
   reflexivity.
   cbn; field.
-Save.
+Qed.
 
 Lemma eval_norm0 : x <> 0 -> y <> 0 -> y / (x * y) + y / x = (1 + y) / x.
 Proof.

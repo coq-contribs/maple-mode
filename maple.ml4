@@ -280,7 +280,7 @@ let rec string_of_expr = function
 (* Gives the index of xi *)
 let var_of_string x =
   try int_of_string (String.sub x 1 ((String.length x)-1)) + 1
-  with _ -> error "Unable to parse Maple answer"
+  with _ -> CErrors.user_err (Pp.str "Unable to parse Maple answer")
 
 (* Parsing of Maple expressions *)
 IFDEF CAMLP5 THEN
@@ -372,13 +372,13 @@ let tac_iter tac lcr =
   List.fold_right (fun c a -> tclTHENFIRST (tac c) a) lcr tclIDTAC
 
 let ltac_call tac (args:glob_tactic_arg list) =
-  TacArg(Loc.ghost,TacCall(Loc.ghost, Misctypes.ArgArg(Loc.ghost, !! tac),args))
+  TacArg(None,TacCall(None, (Misctypes.ArgArg(None, !! tac),args)))
 
 let ltac_lcall tac args =
-  TacArg(Loc.ghost,TacCall(Loc.ghost, Misctypes.ArgVar(Loc.ghost, Id.of_string tac),args))
+  TacArg(None,TacCall(None, (Misctypes.ArgVar(None, Id.of_string tac),args)))
 
 let ltac_letin (x, e1) e2 =
-  TacLetIn(false,[(Loc.ghost,Id.of_string x),e1],e2)
+  TacLetIn(false,[(None,Id.of_string x),e1],e2)
 
 let ltac_apply (f: Tacinterp.Value.t) (arg:constr) =
   let ist = Tacinterp.default_ist () in
@@ -386,7 +386,7 @@ let ltac_apply (f: Tacinterp.Value.t) (arg:constr) =
   let arg = Tacinterp.Value.of_constr arg in
   let idf = Id.of_string "F" in
   let ist = { ist with Tacinterp.lfun = Id.Map.add idf f (Id.Map.add id arg ist.lfun) } in
-  let arg = Reference (Misctypes.ArgVar (Loc.ghost, id)) in
+  let arg = Reference (Misctypes.ArgVar (None, id)) in
   Tacinterp.eval_tactic_ist ist
     (ltac_lcall "F" [arg])
 
@@ -414,7 +414,7 @@ let red_of_tac name c g =
   let arg = Tacinterp.Value.of_constr c in
   let ist = { lfun = Id.Map.singleton id arg; extra = TacStore.empty } in
 (*  let tac = ltac_letin ("F", Tacexp tac) (ltac_lcall "F" [carg c]) in*)
-  let arg = Reference (Misctypes.ArgVar (Loc.ghost, id)) in
+  let arg = Reference (Misctypes.ArgVar (None, id)) in
   let tac = ltac_call tac [arg] in
   let tac = eval_tactic_ist ist tac in
   constr_from_goal (Proofview.V82.of_tactic tac g)
