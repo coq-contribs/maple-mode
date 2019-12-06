@@ -1,5 +1,7 @@
 (* maple.ml4 *)
 
+{
+
 open Pp
 open CErrors
 open Flags
@@ -7,7 +9,7 @@ open Flags
 open Ltac_plugin
 open Names
 open Context
-open Term
+open Constr
 open Vars
 open EConstr
 open Termops
@@ -21,7 +23,11 @@ open Namegen
 open Stdarg
 open Tacarg
 
+}
+
 DECLARE PLUGIN "maple"
+
+{
 
 (* Returns the version of Maple *)
 let version maple =
@@ -89,7 +95,7 @@ type expr =
 let constr_from dir s =
   let id = Id.of_string s in
   try
-    lazy (EConstr.of_constr (Universes.constr_of_global (Nametab.global_of_path (make_path dir id))))
+    lazy (EConstr.of_constr (UnivGen.constr_of_monomorphic_global (Nametab.global_of_path (make_path dir id))))
   with Not_found -> anomaly (Pp.str ("Could not find '"^s^"'."))
 
 let (!!) = Lazy.force
@@ -279,33 +285,33 @@ let var_of_string x =
   with _ -> CErrors.user_err (Pp.str "Unable to parse Maple answer")
 
 (* Parsing of Maple expressions *)
-IFDEF CAMLP5 THEN
-let gram = Grammar.gcreate (Plexer.gmake ())
-ELSE
-let gram = Grammar.create (Plexer.make ())
-END;;
 
-let mexpr_s = Grammar.Entry.create gram "mexpr_s";;
-let mexpr = Grammar.Entry.create gram "mexpr";;
+let mexpr_s = (Pcoq.Entry.create "mexpr_s" : expr Pcoq.Entry.t);;
+let mexpr = (Pcoq.Entry.create "mexpr" : expr Pcoq.Entry.t);;
 
-EXTEND
-  mexpr_s: [ [ "p"; ":="; m = mexpr; ";" -> m ] ];
+}
+
+GRAMMAR EXTEND Gram
+  GLOBAL: mexpr mexpr_s;
+  mexpr_s: [ [ "p"; ":="; m = mexpr; ";" -> { m } ] ];
   mexpr:
     [ "plus" LEFTA
-      [ x = mexpr; "+"; y = mexpr -> Add (x,y)
-      | x = mexpr; "-"; y = mexpr -> Add (x,Opp y) ]
+      [ x = mexpr; "+"; y = mexpr -> { Add (x,y) }
+      | x = mexpr; "-"; y = mexpr -> { Add (x,Opp y) } ]
     | "mult" LEFTA
-      [ x = mexpr; "*"; y = mexpr -> Mul (x,y) ]
+      [ x = mexpr; "*"; y = mexpr -> { Mul (x,y) } ]
     | "div" LEFTA
-      [ INT "1"; "/"; x = mexpr -> Inv x
-      | x = mexpr; "/"; y = mexpr -> Mul (x,Inv y) ]
+      [ NUMERAL "1"; "/"; x = mexpr -> { Inv x }
+      | x = mexpr; "/"; y = mexpr -> { Mul (x,Inv y) } ]
     | "simple" NONA
-      [ "-"; x = mexpr -> Opp x
-      | x = mexpr; "^"; n = INT -> Pow(x,int_of_string n)
-      | n = INT -> Cst(Bigint.of_string n)
-      | x = LIDENT -> Var (var_of_string x)
-      | "("; e = mexpr; ")" -> e ] ];
-END;;
+      [ "-"; x = mexpr -> { Opp x }
+      | x = mexpr; "^"; n = NUMERAL -> { Pow(x,int_of_string (NumTok.to_string n)) }
+      | n = NUMERAL -> { Cst(Bigint.of_string (NumTok.to_string n)) }
+      | x = IDENT -> { Var (var_of_string x) }
+      | "("; e = mexpr; ")" -> { e } ] ];
+END
+
+{
 
 (* Calls Maple with the corresponding operation *)
 let maple_call exe =
@@ -315,9 +321,7 @@ let maple_call exe =
     let maple = is_maple false in
     let _ = Sys.command ("echo \""^ins^"\" | "^maple^" -q") in ();
     let inc = open_in tmp in
-    let exp =
-      try Grammar.Entry.parse mexpr_s (Stream.of_channel inc)
-      with Ploc.Exc (loc,e) -> Loc.raise ~loc:(Pcoq.to_coqloc loc) e in
+    let exp = Pcoq.Entry.parse mexpr_s (Pcoq.Parsable.make (Stream.of_channel inc)) in
     begin
       close_in inc;
       Sys.remove tmp;
@@ -351,11 +355,11 @@ let apply_ope ope env sigma c =
   let (env,vars,c) = name_rels env (EConstr.to_constr sigma c) in
   let g, _, sigma =
     Goal.V82.mk_goal sigma (named_context_val env) (*Dummy goal*)
-      mkProp Evd.Store.empty in
+      mkProp in
   let g = { Evd.it=g; Evd.sigma=sigma; } in
   EConstr.Vars.subst_vars vars (ope (EConstr.of_constr c) g)
 
-let maple ope = apply_ope (operation ope)
+let maple ope = apply_ope (operation ope);;
 
 (* Declare the new reductions (used by "eval" commands and "Eval" constr) *)
 let _ = Redexpr.declare_reduction "raw_simplify" (maple "simplify") in
@@ -368,10 +372,10 @@ let tac_iter tac lcr =
   List.fold_right (fun c a -> tclTHENFIRST (tac c) a) lcr tclIDTAC
 
 let ltac_call tac (args:glob_tactic_arg list) =
-  TacArg(None,TacCall(None, (Misctypes.ArgArg(None, !! tac),args)))
+  TacArg(CAst.make @@ TacCall(CAst.make @@ (Locus.ArgArg(!! tac),args)))
 
 let ltac_lcall tac args =
-  TacArg(None,TacCall(None, (Misctypes.ArgVar(CAst.make (Id.of_string tac)),args)))
+  TacArg(CAst.make @@ TacCall(CAst.make @@ (Locus.ArgVar(CAst.make (Id.of_string tac)),args)))
 
 let ltac_letin (x, e1) e2 =
   TacLetIn(false,[CAst.make (Name (Id.of_string x)),e1],e2)
@@ -382,14 +386,18 @@ let ltac_apply (f: Tacinterp.Value.t) (arg:constr) =
   let arg = Tacinterp.Value.of_constr arg in
   let idf = Id.of_string "F" in
   let ist = { ist with Tacinterp.lfun = Id.Map.add idf f (Id.Map.add id arg ist.lfun) } in
-  let arg = Reference (Misctypes.ArgVar (CAst.make id)) in
+  let arg = Reference (Locus.ArgVar (CAst.make id)) in
   Tacinterp.eval_tactic_ist ist
     (ltac_lcall "F" [arg])
 
+}
+
 TACTIC EXTEND maple_fun_simplify
 | [ "tac_iter" tactic0(tac) ne_constr_list(cl) ] ->
-     [ Proofview.V82.tactic (tac_iter (fun c -> Proofview.V82.of_tactic (ltac_apply tac c)) cl) ]
+     { Proofview.V82.tactic (tac_iter (fun c -> Proofview.V82.of_tactic (ltac_apply tac c)) cl) }
 END
+
+{
 
 let constr_from_goal gls =
   match gls.Evd.it with
@@ -405,18 +413,18 @@ let constr_from_goal gls =
 
 let red_of_tac name c g =
   let dp = DirPath.make (List.map Id.of_string ["Maple";"MapleMode"]) in
-  let tac = lazy(KerName.make (MPfile dp) (DirPath.make []) (Label.make name)) in
+  let tac = lazy(Loc.tag @@ KerName.make (MPfile dp) (Label.make name)) in
   let id = Id.of_string "X" in
   let arg = Tacinterp.Value.of_constr c in
-  let ist = { lfun = Id.Map.singleton id arg; extra = TacStore.empty } in
+  let ist = { lfun = Id.Map.singleton id arg; extra = TacStore.empty; poly = false } in
 (*  let tac = ltac_letin ("F", Tacexp tac) (ltac_lcall "F" [carg c]) in*)
-  let arg = Reference (Misctypes.ArgVar (CAst.make id)) in
+  let arg = Reference (Locus.ArgVar (CAst.make id)) in
   let tac = ltac_call tac [arg] in
   let tac = eval_tactic_ist ist tac in
   constr_from_goal (Proofview.V82.of_tactic tac g)
 
 let maple_reduce ope =
-  apply_ope (red_of_tac ope)
+  apply_ope (red_of_tac ope);;
 
 let _ = Redexpr.declare_reduction "simplify" (maple_reduce "red_simplify") in
 let _ = Redexpr.declare_reduction "factor" (maple_reduce "red_factor") in
@@ -425,3 +433,5 @@ let _ = Redexpr.declare_reduction "normal" (maple_reduce "red_normal") in ()
 
 (* Verifies if Maple is available during the ML loading *)
 (*let _ = is_maple true*)
+
+}
